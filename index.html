@@ -90,7 +90,8 @@
   th { text-align: left; font-size: 12px; color: var(--faint); font-weight: 500; padding: 8px 14px; border-bottom: 1px solid var(--line); }
   td { padding: 8px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; height: 46px; }
   tr:last-child td { border-bottom: 0; }
-  td:first-child { font: 600 14px var(--display); width: 48px; padding-left: 20px; font-variant-numeric: tabular-nums; }
+  td:first-child { font: 600 14px var(--display); width: 74px; padding-left: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td:first-child:not(:has(.ck)) { padding-left: 42px; }
   td.wd { color: var(--mute); width: 48px; }
   td.t { font-family: var(--mono); font-size: 13.5px; letter-spacing: 0; }
   td.ot-pos { color: var(--ok); font-weight: 600; }
@@ -115,6 +116,22 @@
   .chip.on.FERIE { background: #ffb66c; color: #1d1d1f; }
   .chip.popped { animation: pop .45s var(--spring); }
   tr.miss .chip:not(.on) { background: rgba(255,159,10,.14); color: #8a5a00; }
+  td .ck { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,.22); background: #fff; padding: 0; margin: 0 8px 0 0; vertical-align: -3px; cursor: pointer; transition: background .2s, border-color .2s, transform .3s var(--spring); position: relative; }
+  td .ck:hover { border-color: var(--ink); }
+  tr.sel td .ck { background: var(--ink); border-color: var(--ink); }
+  tr.sel td .ck::after { content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  tr.sel td { background: rgba(0,0,0,.035) !important; }
+  tr.miss td:first-child::before { display: none; }
+  .bulk { position: fixed; left: 50%; bottom: 24px; z-index: 30; display: flex; align-items: center; gap: 6px; padding: 8px 10px 8px 16px; border-radius: 980px;
+    background: rgba(29,29,31,.88); color: #fff; backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); box-shadow: 0 12px 40px rgba(0,0,0,.25);
+    transform: translate(-50%, 140%); opacity: 0; transition: transform .5s var(--spring), opacity .25s var(--ease); pointer-events: none; }
+  .bulk.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+  .bulk .cnt { font: 600 13px/1 var(--font); white-space: nowrap; }
+  .bulk .sep { width: 1px; height: 20px; background: rgba(255,255,255,.2); margin: 0 4px; }
+  .bulk .chip:not(.on) { background: rgba(255,255,255,.14); color: #fff; }
+  .bulk .x { background: none; border: 0; color: rgba(255,255,255,.7); font-size: 14px; cursor: pointer; padding: 6px 8px; border-radius: 50%; }
+  .bulk .x:hover { color: #fff; background: rgba(255,255,255,.12); }
+  .selhint { color: var(--faint); font-size: 12px; margin-left: 8px; }
   span.hol { color: #c26a00; font-size: 13px; margin-left: 8px; }
   span.inc { color: #c77c00; font-size: 13px; margin-left: 8px; }
 
@@ -271,6 +288,17 @@
   </footer>
 </main>
 <div id="print"></div>
+<div class="bulk" id="bulk" aria-hidden="true">
+  <span class="cnt" id="bulkCnt"></span>
+  <span class="sep"></span>
+  <button type="button" class="chip on CONGE" data-bulk="CONGE"></button>
+  <button type="button" class="chip on recup" data-bulk="recup"></button>
+  <button type="button" class="chip on MALADIE" data-bulk="MALADIE"></button>
+  <button type="button" class="chip on FERIE" data-bulk="FERIE"></button>
+  <button type="button" class="chip" data-bulk="none" data-t="clearSt"></button>
+  <span class="sep"></span>
+  <button type="button" class="x" id="bulkX" aria-label="close">✕</button>
+</div>
 
 <script>
 // ---- Kernlogik (läuft im Browser und in Node zum Testen) ----
@@ -548,6 +576,7 @@ const TPL = {"mimetype": "application/vnd.oasis.opendocument.spreadsheet", "cont
 const I18N = {
   de: {
     title: "Timesheet-Generator",
+    clearSt: "Leeren", selN: n => n === 1 ? "1 Tag ausgewählt" : `${n} Tage ausgewählt`, selHint: "Tipp: Kreis anklicken, Shift-Klick wählt mehrere Tage",
     s1t: "Badge-Export holen", s1d: "Deine Pointages (Badge-Zeiten) für den Monat als CSV exportieren.",
     s2t: "Hier reinziehen", s2d: "CSV ins Feld oben ziehen. Name und Monat werden automatisch erkannt.",
     s3t: "Prüfen & herunterladen", s3d: "Gelb markierte Tage ausfüllen (CONGE, recup …), Format wählen – fertig.",
@@ -575,6 +604,7 @@ const I18N = {
   },
   fr: {
     title: "Générateur de timesheet",
+    clearSt: "Effacer", selN: n => n === 1 ? "1 jour sélectionné" : `${n} jours sélectionnés`, selHint: "Astuce : cliquez sur le cercle, Maj+clic sélectionne plusieurs jours",
     s1t: "Exporter les pointages", s1d: "Exportez vos pointages du mois au format CSV.",
     s2t: "Déposer ici", s2d: "Glissez le CSV dans la zone ci-dessus. Le nom et le mois sont détectés automatiquement.",
     s3t: "Vérifier et télécharger", s3d: "Complétez les jours en jaune (CONGE, récup …), choisissez le format – terminé.",
@@ -602,6 +632,7 @@ const I18N = {
   },
   en: {
     title: "Timesheet generator",
+    clearSt: "Clear", selN: n => n === 1 ? "1 day selected" : `${n} days selected`, selHint: "Tip: click the circle, Shift-click selects several days",
     s1t: "Get the badge export", s1d: "Export your Pointages (badge times) for the month as CSV.",
     s2t: "Drop it here", s2d: "Drag the CSV into the area above. Name and month are detected automatically.",
     s3t: "Check & download", s3d: "Fill in the yellow days (CONGE, recup …), pick a format – done.",
@@ -675,6 +706,7 @@ function swapText(el, txt) {
   el.textContent = txt; el.classList.remove("fade-swap"); void el.offsetWidth; el.classList.add("fade-swap");
 }
 let prevOpen = null, animRows = false, flashDay = null;
+const sel = new Set(); let lastSel = null;
 
 function applyLang() {
   document.documentElement.lang = lang;
@@ -684,6 +716,7 @@ function applyLang() {
   });
   document.querySelectorAll("#lang button").forEach(b => b.classList.toggle("on", b.dataset.l === lang));
   document.querySelectorAll("#fmt button").forEach(b => b.dataset.tip = T("tip")[b.dataset.f]);
+  document.querySelectorAll("#bulk [data-bulk]").forEach(b => { if (b.dataset.bulk !== "none") b.textContent = T("st")[b.dataset.bulk]; });
   moveThumb();
   if (badges) { fillMonths(); render(); }
 }
@@ -716,7 +749,7 @@ async function load(file) {
   $("ui").classList.remove("hidden");
   [$("fileCard"), document.querySelector(".controls"), ...document.querySelectorAll(".tile"), $("sum"), document.querySelector(".tablecard")]
     .forEach((el, i) => { el.classList.remove("enter"); void el.offsetWidth; el.style.setProperty("--d", i * 70 + "ms"); el.classList.add("enter"); });
-  prevOpen = null; animRows = true;
+  prevOpen = null; animRows = true; sel.clear(); lastSel = null;
   render();
   setFmt(fmt); setTimeout(moveThumb, 50);
 }
@@ -738,7 +771,7 @@ function render() {
   $("sum").textContent = open ? `${T("fill")}: ${r.missing.map(x => x.day + ". " + wd(x.wd) + (x.kind === "incomplete" ? ` (${T("incomplete")})` : "")).join(", ")}` : "";
   $("tblTitle").textContent = T("months")[m - 1] + " " + y;
   if (badges) $("fileWho").textContent = (badges.name || "") + " · " + months.length + " " + T("loaded");
-  $("saved").textContent = Object.keys(ov).length ? T("saved") : "";
+  $("saved").innerHTML = (Object.keys(ov).length ? T("saved") : "") + (r.missing.length ? `<span class="selhint">${T("selHint")}</span>` : "");
   const shiftSel = x => `<select data-day="${x.day}" data-k="shift" class="${x.shiftSel ? "set" : ""}">` +
     `<option value="0">${T("auto")} (${hm(x.shiftAuto)})</option>` +
     [480, 540, 600].map(v => `<option value="${v}"${x.shiftSel === v ? " selected" : ""}>${hm(v)}–${hm(v + Math.round((parseFloat($("hours").value) || 9) * 60))}</option>`).join("") + "</select>";
@@ -746,14 +779,15 @@ function render() {
     ["CONGE", "recup", "MALADIE", "FERIE"].map(v => `<button type="button" class="chip ${v}${x.status === v ? " on" : ""}" data-st="${v}">${T("st")[v]}</button>`).join("") + "</div>";
   $("tb").innerHTML = r.rows.map((x, i) => {
     const missing = r.missing.includes(x);
-    const cls = x.kind === "we" ? "we" : missing ? "miss" : x.holiday ? "hol" : "";
+    const selectable = x.kind === "off" || x.kind === "incomplete";
+    const cls = (x.kind === "we" ? "we" : missing ? "miss" : x.holiday ? "hol" : "") + (sel.has(x.day) ? " sel" : "");
     const hol = x.holiday ? `<span class="hol">${T("hol")[x.holiday]}</span>` : "";
     let shiftTd = "", stTd = "";
     if (x.kind === "work") { shiftTd = shiftSel(x); stTd = hol; }
     else if (x.kind === "off" || x.kind === "incomplete") {
       stTd = statusSel(x) + (hol ? " " + hol : "") + (x.kind === "incomplete" && x.status === "none" ? `<span class="inc">${T("incomplete")}</span>` : "");
     } else stTd = hol;
-    return `<tr class="${cls}${flashDay === x.day ? " flash" : ""}" style="--i:${i}"><td>${x.day}</td><td class="wd">${wd(x.wd)}</td><td>${shiftTd}</td><td class="t">${x.s}</td><td class="t">${x.e}</td><td class="t ${x.ot.startsWith("-") ? "ot-neg" : x.ot && x.ot !== "00h00" && x.ot !== "?" ? "ot-pos" : ""}">${x.ot}</td><td>${stTd}</td></tr>`;
+    return `<tr class="${cls}${flashDay === x.day ? " flash" : ""}" style="--i:${i}"><td>${selectable ? `<button type="button" class="ck" data-day="${x.day}" aria-label="select"></button>` : ""}${x.day}</td><td class="wd">${wd(x.wd)}</td><td>${shiftTd}</td><td class="t">${x.s}</td><td class="t">${x.e}</td><td class="t ${x.ot.startsWith("-") ? "ot-neg" : x.ot && x.ot !== "00h00" && x.ot !== "?" ? "ot-pos" : ""}">${x.ot}</td><td>${stTd}</td></tr>`;
   }).join("");
   const tb = $("tb");
   tb.classList.remove("anim");
@@ -763,6 +797,13 @@ function render() {
     el && el.classList.add("popped");
   }
   animRows = false; flashDay = null;
+  updateBulk();
+}
+function updateBulk() {
+  const b = $("bulk");
+  b.classList.toggle("show", sel.size > 0);
+  b.setAttribute("aria-hidden", sel.size ? "false" : "true");
+  if (sel.size) $("bulkCnt").textContent = T("selN")(sel.size);
 }
 let flashKey = null;
 
@@ -816,14 +857,36 @@ drop.ondragover = e => { e.preventDefault(); drop.classList.add("hover"); };
 drop.ondragleave = () => drop.classList.remove("hover");
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove("hover"); e.dataTransfer.files[0] && load(e.dataTransfer.files[0]); };
 ["name", "hours"].forEach(id => $(id).addEventListener("input", render));
-$("month").addEventListener("input", () => { animRows = true; prevOpen = null; render(); });
+$("month").addEventListener("input", () => { animRows = true; prevOpen = null; sel.clear(); lastSel = null; render(); });
 addEventListener("resize", moveThumb);
 document.fonts && document.fonts.ready.then(moveThumb);
 $("dl").onclick = download;
+$("bulk").addEventListener("click", e => {
+  const btn = e.target.closest("[data-bulk]");
+  if (btn) {
+    const ov = OV[$("month").value];
+    sel.forEach(d => { ov[d] = ov[d] || {}; ov[d].status = btn.dataset.bulk; });
+    saveOV();
+  }
+  if (btn || e.target.closest("#bulkX")) { sel.clear(); lastSel = null; render(); }
+});
+addEventListener("keydown", e => { if (e.key === "Escape" && sel.size) { sel.clear(); lastSel = null; render(); } });
 $("change").onclick = () => $("file").click();
 document.querySelectorAll("#fmt button").forEach(b => b.onclick = () => setFmt(b.dataset.f));
 $("reset").onclick = () => { if (confirm(T("resetQ"))) { OV[$("month").value] = {}; saveOV(); render(); } };
 $("tb").addEventListener("click", e => {
+  const ck = e.target.closest(".ck");
+  if (ck) {
+    const d = +ck.dataset.day;
+    const selectable = last.r.rows.filter(x => x.kind === "off" || x.kind === "incomplete").map(x => x.day);
+    if (e.shiftKey && lastSel !== null) {
+      const [a, b] = [Math.min(lastSel, d), Math.max(lastSel, d)];
+      selectable.filter(x => x >= a && x <= b).forEach(x => sel.add(x));
+    } else sel.has(d) ? sel.delete(d) : sel.add(d);
+    lastSel = d;
+    render();
+    return;
+  }
   const chip = e.target.closest(".chip"); if (!chip) return;
   const box = chip.parentElement, d = +box.dataset.day, ov = OV[$("month").value];
   ov[d] = ov[d] || {};
