@@ -159,6 +159,17 @@
   .mb.pri { background: var(--ink); color: #fff; }
   .mb.pri.danger { background: var(--neg); }
   tr.spot td { animation: flash 1.6s var(--ease); background: rgba(255,159,10,.18); }
+  .adv { position: relative; align-self: end; }
+  .gear { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: var(--mute); font: 500 13px/1 var(--font); cursor: pointer; position: relative; transition: background .2s, color .2s; }
+  .gear:hover, .gear[aria-expanded="true"] { background: var(--fill); color: var(--ink); }
+  .gear svg { width: 16px; height: 16px; }
+  .gear .dotc { display: none; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+  .gear.changed .dotc { display: block; }
+  .pop { position: absolute; top: calc(100% + 10px); left: 0; width: 260px; padding: 14px; border-radius: 14px; background: #fff;
+    box-shadow: 0 16px 40px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.04); opacity: 0; transform: translateY(-6px) scale(.97); transform-origin: top left; pointer-events: none; transition: opacity .2s var(--ease), transform .35s var(--spring); z-index: 25; }
+  .pop.show { opacity: 1; transform: none; pointer-events: auto; }
+  .pop input { width: 100%; }
+  .pop p { margin: 8px 0 0; font-size: 12px; color: var(--mute); line-height: 1.4; }
   span.hol { color: #c26a00; font-size: 13px; margin-left: 8px; }
   span.inc { color: #c77c00; font-size: 13px; margin-left: 8px; }
 
@@ -285,7 +296,13 @@
     <div class="card controls">
       <label><span data-t="month"></span><select id="month"></select></label>
       <label><span data-t="name"></span><input id="name" style="width:190px;min-width:0"></label>
-      <label><span data-t="shiftLen"></span><input id="hours" type="number" step="0.25" value="9" style="min-width:90px;width:90px"></label>
+      <div class="adv">
+        <button type="button" class="gear" id="gear" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span data-t="adv"></span><i class="dotc"></i></button>
+        <div class="pop" id="advPop">
+          <label><span data-t="shiftLen"></span><input id="hours" type="number" step="0.25" min="1" max="14" value="9"></label>
+          <p data-t="shiftHint"></p>
+        </div>
+      </div>
       <div class="spacer"></div>
       <div class="actions">
       <div class="fmt" id="fmt"><span class="thumb"></span><button data-f="ods">ODS</button><button data-f="xlsx">XLSX</button><button data-f="pdf">PDF</button></div>
@@ -614,6 +631,7 @@ const TPL = {"mimetype": "application/vnd.oasis.opendocument.spreadsheet", "cont
 const I18N = {
   de: {
     title: "Timesheet-Generator",
+    adv: "Erweitert", shiftHint: "Standard: 9 h = 8 h Arbeit + 1 h Pause. Nur ändern, wenn deine Schicht anders ist.",
     warnT: n => n === 1 ? "Noch 1 offener Tag" : `Noch ${n} offene Tage`, warnD: "Diese Tage haben weder Badge noch Status. Trotzdem herunterladen?", warnYes: "Trotzdem herunterladen", warnNo: "Zu den offenen Tagen",
     edited: "Manuell geändert – Badge war", added: "Manuell eingetragen", editTip: "Klicken zum Korrigieren (z. B. 17:30)", r6: "Vergessen zu badgen? Start- oder Endzeit einfach anklicken und korrigieren (z. B. 17:30). Geänderte Zeiten sind orange markiert, leeren stellt den Badge-Wert wieder her.",
     clearSt: "Leeren", selN: n => n === 1 ? "1 Tag ausgewählt" : `${n} Tage ausgewählt`, selHint: "Tipp: Kreis anklicken, Shift-Klick wählt mehrere Tage",
@@ -635,7 +653,7 @@ const I18N = {
     sub: "Badge-Export (Pointages-CSV) reinziehen, Monat wählen, Timesheet als ODS, XLSX oder PDF herunterladen. Alles läuft lokal im Browser.",
     rules: "Regeln: Schicht 8/9/10 Uhr wird aus dem Eintritt erkannt · Zeit vor Schichtbeginn zählt nicht · Overtime erst nach Schichtende, nur volle 15 Min · zu spät / früher gehen wird abgezogen.",
     drop: "CSV hier ablegen", click: "oder klicken zum Auswählen",
-    month: "Monat", name: "Name", shiftLen: "Schicht inkl. Pause", download: "Herunterladen",
+    month: "Monat", name: "Name", shiftLen: "Schichtlänge inkl. Pause (h)", download: "Herunterladen",
     day: "Tag", shift: "Schicht", start: "Start", end: "Ende",
     days: "Arbeitstage", total: "Overtime gesamt", fill: "Selbst eintragen (CONGE / recup …)",
     nobadge: "kein Badge", incomplete: "Badge unvollständig", noData: "Keine Badge-Einträge in der Datei gefunden.",
@@ -644,6 +662,7 @@ const I18N = {
   },
   fr: {
     title: "Générateur de timesheet",
+    adv: "Avancé", shiftHint: "Par défaut : 9 h = 8 h de travail + 1 h de pause. À modifier seulement si votre horaire est différent.",
     warnT: n => n === 1 ? "Encore 1 jour à compléter" : `Encore ${n} jours à compléter`, warnD: "Ces jours n’ont ni pointage ni statut. Télécharger quand même ?", warnYes: "Télécharger quand même", warnNo: "Voir les jours",
     edited: "Modifié manuellement – pointage", added: "Saisi manuellement", editTip: "Cliquer pour corriger (ex. 17:30)", r6: "Oubli de pointage ? Cliquez sur l’heure de début ou de fin pour la corriger (ex. 17:30). Les heures modifiées sont en orange ; vider le champ rétablit le pointage.",
     clearSt: "Effacer", selN: n => n === 1 ? "1 jour sélectionné" : `${n} jours sélectionnés`, selHint: "Astuce : cliquez sur le cercle, Maj+clic sélectionne plusieurs jours",
@@ -665,7 +684,7 @@ const I18N = {
     sub: "Déposez l’export des pointages (CSV), choisissez le mois et téléchargez la timesheet en ODS, XLSX ou PDF. Tout reste en local dans le navigateur.",
     rules: "Règles : horaire 8h/9h/10h détecté à l’entrée · le temps avant le début de l’horaire ne compte pas · heures sup. seulement après la fin de l’horaire, par tranches complètes de 15 min · retard / départ anticipé déduit.",
     drop: "Déposez le CSV ici", click: "ou cliquez pour choisir",
-    month: "Mois", name: "Nom", shiftLen: "Horaire, pause incl.", download: "Télécharger",
+    month: "Mois", name: "Nom", shiftLen: "Durée de l’horaire, pause incl. (h)", download: "Télécharger",
     day: "Jour", shift: "Horaire", start: "Début", end: "Fin",
     days: "jours travaillés", total: "Heures sup. totales", fill: "À compléter (CONGE / récup …)",
     nobadge: "pas de pointage", incomplete: "pointage incomplet", noData: "Aucun pointage trouvé dans le fichier.",
@@ -674,6 +693,7 @@ const I18N = {
   },
   en: {
     title: "Timesheet generator",
+    adv: "Advanced", shiftHint: "Default: 9 h = 8 h work + 1 h break. Only change this if your shift is different.",
     warnT: n => n === 1 ? "1 day still open" : `${n} days still open`, warnD: "These days have neither a badge nor a status. Download anyway?", warnYes: "Download anyway", warnNo: "Show open days",
     edited: "Edited manually – badge was", added: "Entered manually", editTip: "Click to correct (e.g. 17:30)", r6: "Forgot to badge? Click the start or end time to correct it (e.g. 17:30). Edited times are marked orange; clearing the field restores the badge value.",
     clearSt: "Clear", selN: n => n === 1 ? "1 day selected" : `${n} days selected`, selHint: "Tip: click the circle, Shift-click selects several days",
@@ -695,7 +715,7 @@ const I18N = {
     sub: "Drop the badge export (Pointages CSV), pick the month, download the timesheet as ODS, XLSX or PDF. Everything runs locally in your browser.",
     rules: "Rules: 8/9/10 am shift detected from badge-in · time before shift start doesn’t count · overtime only after shift end, in full 15-min blocks · late arrival / early leave is deducted.",
     drop: "Drop CSV here", click: "or click to choose",
-    month: "Month", name: "Name", shiftLen: "Shift incl. break", download: "Download",
+    month: "Month", name: "Name", shiftLen: "Shift length incl. break (h)", download: "Download",
     day: "Day", shift: "Shift", start: "Start", end: "End",
     days: "working days", total: "Total overtime", fill: "Fill in yourself (CONGE / recup …)",
     nobadge: "no badge", incomplete: "badge incomplete", noData: "No badge entries found in the file.",
@@ -934,6 +954,12 @@ $("month").addEventListener("input", () => { animRows = true; prevOpen = null; s
 addEventListener("resize", moveThumb);
 document.fonts && document.fonts.ready.then(moveThumb);
 $("dl").onclick = download;
+try { const h = parseFloat(localStorage.getItem("ts-hours")); if (h > 0) $("hours").value = h; } catch {}
+function markGear() { $("gear").classList.toggle("changed", (parseFloat($("hours").value) || 9) !== 9); }
+markGear();
+$("gear").onclick = e => { e.stopPropagation(); const open = !$("advPop").classList.contains("show"); $("advPop").classList.toggle("show", open); $("gear").setAttribute("aria-expanded", open); if (open) setTimeout(() => $("hours").focus(), 60); };
+document.addEventListener("click", e => { if (!e.target.closest(".adv")) { $("advPop").classList.remove("show"); $("gear").setAttribute("aria-expanded", "false"); } });
+$("hours").addEventListener("input", () => { try { localStorage.setItem("ts-hours", $("hours").value); } catch {} markGear(); });
 $("bulk").addEventListener("click", e => {
   const btn = e.target.closest("[data-bulk]");
   if (btn) {
