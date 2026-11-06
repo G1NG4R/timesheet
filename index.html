@@ -768,8 +768,20 @@ if (!I18N[lang]) lang = "de";
 const T = k => I18N[lang][k];
 
 let badges = null, last = null, months = [];
-let OV = {}; // overrides pro Monat: OV["2026-10"][day] = {status, shift} – lokal gespeichert
+let OV = {}; // lokal gespeicherte Einträge (Status, Schicht, Zeiten), siehe ovKey()
 try { OV = JSON.parse(localStorage.getItem("ts-ov") || "{}") || {}; } catch { OV = {}; }
+// Einträge pro Person UND Monat: OV["SEIL Tim|2026-10"][day]
+const ovKey = () => `${badges.name}|${$("month").value}`;
+function curOV() {
+  const k = ovKey(), legacy = $("month").value;
+  if (!OV[k]) {
+    // alte Einträge aus Versionen ohne Person (Schlüssel nur "2026-10") übernehmen –
+    // nur bei einer CSV mit genau einer Person, sonst wäre unklar, wem sie gehören
+    if (OV[legacy] && badges.people.length === 1) { OV[k] = OV[legacy]; delete OV[legacy]; saveOV(); }
+    else OV[k] = {};
+  }
+  return OV[k];
+}
 const saveOV = () => { try { localStorage.setItem("ts-ov", JSON.stringify(OV)); return true; } catch { return false; } };
 const $ = id => document.getElementById(id);
 
@@ -883,7 +895,7 @@ async function load(file) {
 
 function render() {
   const key = $("month").value, [y, m] = key.split("-").map(Number);
-  const ov = OV[key] || (OV[key] = {});
+  const ov = curOV();
   last = { y, m, r: buildContent(TPL["content.xml"], badges, y, m, $("name").value, parseFloat($("hours").value) || 9, { incompleteLabel: T("incomplete"), overrides: ov }) };
   const r = last.r, wd = x => T("wd")[x];
   countUp($("tDays"), r.worked, String);
@@ -1034,7 +1046,7 @@ $("hours").addEventListener("input", () => { try { localStorage.setItem("ts-hour
 $("bulk").addEventListener("click", e => {
   const btn = e.target.closest("[data-bulk]");
   if (btn) {
-    const ov = OV[$("month").value];
+    const ov = curOV();
     sel.forEach(d => { ov[d] = ov[d] || {}; ov[d].status = btn.dataset.bulk; });
     saveOV();
   }
@@ -1045,7 +1057,7 @@ $("change").onclick = () => $("file").click();
 document.querySelectorAll("#fmt button").forEach(b => b.onclick = () => setFmt(b.dataset.f));
 $("reset").onclick = async () => {
   if (await ask({ title: T("resetQ"), text: T("resetD"), yes: T("resetYes"), no: T("cancel"), danger: true, icon: "↺" })) {
-    OV[$("month").value] = {}; saveOV(); sel.clear(); animRows = true; render();
+    OV[ovKey()] = {}; saveOV(); sel.clear(); animRows = true; render();
   }
 };
 $("tb").addEventListener("click", e => {
@@ -1063,14 +1075,14 @@ $("tb").addEventListener("click", e => {
   }
   const tbtn = e.target.closest("[data-time]");
   if (tbtn) {
-    const d = tbtn.dataset.time, ov = OV[$("month").value];
+    const d = tbtn.dataset.time, ov = curOV();
     if (ov[d] && ov[d].status && ov[d].status !== "none") { ov[d].status = "none"; saveOV(); render(); }
     const inp = $("tb").querySelector(`.tm[data-day="${d}"][data-k="${$("tb").querySelector(`.tm[data-day="${d}"][data-k="tin"]`).value ? "tout" : "tin"}"]`);
     inp.classList.add("want"); inp.focus();
     return;
   }
   const chip = e.target.closest(".chip"); if (!chip) return;
-  const box = chip.parentElement, d = +box.dataset.day, ov = OV[$("month").value];
+  const box = chip.parentElement, d = +box.dataset.day, ov = curOV();
   ov[d] = ov[d] || {};
   ov[d].status = box.dataset.cur === chip.dataset.st ? "none" : chip.dataset.st;
   saveOV();
@@ -1091,7 +1103,7 @@ $("tb").addEventListener("change", e => {
   if (el.classList.contains("tm")) {
     const v = parseTime(el.value);
     if (Number.isNaN(v)) { el.classList.remove("bad"); void el.offsetWidth; el.classList.add("bad"); setTimeout(render, 650); return; }
-    const ov = OV[$("month").value], d = +el.dataset.day, k = el.dataset.k;
+    const ov = curOV(), d = +el.dataset.day, k = el.dataset.k;
     const row = last.r.rows.find(x => x.day === d), orig = k === "tin" ? row.origIn : row.origOut;
     ov[d] = ov[d] || {};
     if (v === null || v === orig) delete ov[d][k]; else ov[d][k] = v;
@@ -1101,7 +1113,7 @@ $("tb").addEventListener("change", e => {
     if (k === "tin" && v !== null && nxt && !nxt.value) { nxt.classList.add("want"); nxt.focus(); }
     return;
   }
-  const ov = OV[$("month").value], d = +el.dataset.day;
+  const ov = curOV(), d = +el.dataset.day;
   ov[d] = ov[d] || {};
   ov[d][el.dataset.k] = el.dataset.k === "shift" ? +el.value : el.value;
   saveOV();
