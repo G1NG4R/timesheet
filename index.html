@@ -3,7 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Timesheet</title>
+<title>Timesheet-Generator</title>
+<meta name="description" content="Badge-Export (Pointages-CSV) reinziehen, offene Tage ausfüllen, Timesheet als ODS, XLSX oder PDF herunterladen. Läuft komplett lokal im Browser.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Timesheet-Generator">
+<meta property="og:description" content="Aus dem Badge-Export in zwei Minuten zum fertigen Timesheet – ODS, XLSX oder PDF. Keine Installation, keine Daten verlassen den PC.">
+<meta property="og:url" content="https://g1ng4r.github.io/timesheet/">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="en_GB">
+<meta name="twitter:card" content="summary">
+<meta name="author" content="Tim Seil">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%231d1d1f%22/%3E%3Crect%20x%3D%227%22%20y%3D%227%22%20width%3D%228%22%20height%3D%228%22%20rx%3D%222%22%20fill%3D%22%2300a933%22/%3E%3Crect%20x%3D%2217%22%20y%3D%227%22%20width%3D%228%22%20height%3D%228%22%20rx%3D%222%22%20fill%3D%22%236fa8dc%22/%3E%3Crect%20x%3D%227%22%20y%3D%2217%22%20width%3D%228%22%20height%3D%228%22%20rx%3D%222%22%20fill%3D%22%23ffff00%22/%3E%3Crect%20x%3D%2217%22%20y%3D%2217%22%20width%3D%228%22%20height%3D%228%22%20rx%3D%222%22%20fill%3D%22%23ffb66c%22/%3E%3C/svg%3E">
+<meta name="theme-color" content="#f5f5f7">
 <style>
   :root {
     --ink: #1d1d1f; --mute: #6e6e73; --faint: #a1a1a6; --line: rgba(0,0,0,.08); --bg: #f5f5f7; --card: #fff;
@@ -195,7 +207,7 @@
   .fmt { display: inline-flex; background: var(--fill); border-radius: 980px; padding: 3px; position: relative; }
   .fmt button { position: relative; z-index: 1; background: transparent; border: 0; border-radius: 980px; padding: 8px 14px; font: 500 13px/1 var(--font); color: var(--ink); cursor: pointer; }
   .fmt .thumb { position: absolute; top: 3px; bottom: 3px; left: 0; border-radius: 980px; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 3px 1px rgba(0,0,0,.04); transition: transform .45s var(--spring), width .45s var(--spring); }
-  .actions { display: flex; gap: 10px; align-items: center; }
+  .actions { display: flex; gap: 10px; align-items: center; margin-left: auto; }
   .fmt button[data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 10px); left: 50%; width: max-content; max-width: 230px;
     transform: translate(-50%, -4px) scale(.96); transform-origin: top center; opacity: 0; pointer-events: none;
     background: rgba(29,29,31,.92); color: #fff; font: 400 12.5px/1.4 var(--font); letter-spacing: -.005em; text-align: left; white-space: normal;
@@ -210,10 +222,12 @@
 
   #print { display: none; }
   @media print {
-    @page { size: A4 portrait; margin: 16mm 16mm; }
+    /* margin 0: Chrome hat dann keinen Platz für Kopf-/Fußzeile (Datum, URL) – Abstand kommt über padding */
+    @page { size: A4 portrait; margin: 0; }
+    html, body { margin: 0 !important; padding: 0 !important; }
     body { background: #fff; }
     body > *:not(#print) { display: none !important; }
-    #print { display: block; font: 10.5pt/1.3 Arial, Helvetica, sans-serif; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #print { display: block; padding: 16mm 18mm; font: 10.5pt/1.3 Arial, Helvetica, sans-serif; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     #print .hd { display: flex; justify-content: space-between; align-items: end; margin-bottom: 14px; }
     #print h2 { font-size: 18pt; margin: 0; letter-spacing: -.01em; }
     #print .meta { text-align: right; }
@@ -306,6 +320,7 @@
 
   <div id="ui" class="hidden">
     <div class="card controls">
+      <label id="personBox" class="hidden"><span data-t="person"></span><select id="person"></select></label>
       <label><span data-t="month"></span><select id="month"></select></label>
       <label><span data-t="name"></span><input id="name" style="width:190px;min-width:0"></label>
       <div class="adv">
@@ -368,22 +383,27 @@
 // ---- Kernlogik (läuft im Browser und in Node zum Testen) ----
 const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// Liest den Pointages-Export. Enthält die CSV mehrere Personen, werden sie getrennt:
+// users = { "SEIL Tim": { "2026-10-01": {in, out}, ... }, ... }
 function parseBadges(text) {
-  const days = {}; let name = null;
+  const users = {}, order = [];
   for (const line of text.split(/\r?\n/).slice(1)) {
     const c = [...line.matchAll(/"([^"]*)"/g)].map(m => m[1]);
     if (c.length < 7) continue;
     const m = c[1].match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})/);
     if (!m) continue;
-    name = name || c[0].trim();
+    const who = c[0].trim() || "?";
+    if (!users[who]) { users[who] = {}; order.push(who); }
     const key = `${m[3]}-${m[2]}-${m[1]}`;
     const min = (+m[4]) * 60 + (+m[5]);
-    const d = days[key] || (days[key] = {});
+    const d = users[who][key] || (users[who][key] = {});
     const a = c[6].toLowerCase();
     if (a.startsWith("entr")) d.in = d.in === undefined ? min : Math.min(d.in, min);
     else if (a.startsWith("sortie")) d.out = d.out === undefined ? min : Math.max(d.out, min);
   }
-  return { name, days };
+  const people = order.sort((x, y) => x.localeCompare(y));
+  const name = people[0] || null;
+  return { name, days: name ? users[name] : {}, users, people };
 }
 
 function monthsIn(days) {
@@ -649,6 +669,7 @@ const I18N = {
     resetD: "Alle Status, Schichten und korrigierten Zeiten dieses Monats werden entfernt.", resetYes: "Zurücksetzen", cancel: "Abbrechen",
     adv: "Erweitert", shiftHint: "Standard: 9 h = 8 h Arbeit + 1 h Pause. Nur ändern, wenn deine Schicht anders ist.",
     warnT: n => n === 1 ? "Noch 1 offener Tag" : `Noch ${n} offene Tage`, warnD: "Diese Tage haben weder Badge noch Status. Trotzdem herunterladen?", warnYes: "Trotzdem herunterladen", warnNo: "Zu den offenen Tagen",
+    person: "Für wen?", persons: n => `${n} Personen in der Datei`,
     enterTime: "Zeit eintragen",
     edited: "Manuell geändert – Badge war", added: "Manuell eingetragen", editTip: "Klicken zum Korrigieren (z. B. 17:30)", r6: "Vergessen zu badgen? Start- oder Endzeit einfach anklicken und korrigieren (z. B. 17:30). Geänderte Zeiten sind orange markiert, leeren stellt den Badge-Wert wieder her.",
     clearSt: "Leeren", selN: n => n === 1 ? "1 Tag ausgewählt" : `${n} Tage ausgewählt`, selHint: "Tipp: Kreis anklicken, Shift-Klick wählt mehrere Tage",
@@ -685,6 +706,7 @@ const I18N = {
     resetD: "Tous les statuts, horaires et heures corrigées de ce mois seront supprimés.", resetYes: "Réinitialiser", cancel: "Annuler",
     adv: "Avancé", shiftHint: "Par défaut : 9 h = 8 h de travail + 1 h de pause. À modifier seulement si votre horaire est différent.",
     warnT: n => n === 1 ? "Encore 1 jour à compléter" : `Encore ${n} jours à compléter`, warnD: "Ces jours n’ont ni pointage ni statut. Télécharger quand même ?", warnYes: "Télécharger quand même", warnNo: "Voir les jours",
+    person: "Pour qui ?", persons: n => `${n} personnes dans le fichier`,
     enterTime: "Saisir l’heure",
     edited: "Modifié manuellement – pointage", added: "Saisi manuellement", editTip: "Cliquer pour corriger (ex. 17:30)", r6: "Oubli de pointage ? Cliquez sur l’heure de début ou de fin pour la corriger (ex. 17:30). Les heures modifiées sont en orange ; vider le champ rétablit le pointage.",
     clearSt: "Effacer", selN: n => n === 1 ? "1 jour sélectionné" : `${n} jours sélectionnés`, selHint: "Astuce : cliquez sur le cercle, Maj+clic sélectionne plusieurs jours",
@@ -721,6 +743,7 @@ const I18N = {
     resetD: "All statuses, shifts and corrected times for this month will be removed.", resetYes: "Reset", cancel: "Cancel",
     adv: "Advanced", shiftHint: "Default: 9 h = 8 h work + 1 h break. Only change this if your shift is different.",
     warnT: n => n === 1 ? "1 day still open" : `${n} days still open`, warnD: "These days have neither a badge nor a status. Download anyway?", warnYes: "Download anyway", warnNo: "Show open days",
+    person: "For whom?", persons: n => `${n} people in the file`,
     enterTime: "Enter time",
     edited: "Edited manually – badge was", added: "Entered manually", editTip: "Click to correct (e.g. 17:30)", r6: "Forgot to badge? Click the start or end time to correct it (e.g. 17:30). Edited times are marked orange; clearing the field restores the badge value.",
     clearSt: "Clear", selN: n => n === 1 ? "1 day selected" : `${n} days selected`, selHint: "Tip: click the circle, Shift-click selects several days",
@@ -757,8 +780,20 @@ if (!I18N[lang]) lang = "de";
 const T = k => I18N[lang][k];
 
 let badges = null, last = null, months = [];
-let OV = {}; // overrides pro Monat: OV["2026-10"][day] = {status, shift} – lokal gespeichert
+let OV = {}; // lokal gespeicherte Einträge (Status, Schicht, Zeiten), siehe ovKey()
 try { OV = JSON.parse(localStorage.getItem("ts-ov") || "{}") || {}; } catch { OV = {}; }
+// Einträge pro Person UND Monat: OV["SEIL Tim|2026-10"][day]
+const ovKey = () => `${badges.name}|${$("month").value}`;
+function curOV() {
+  const k = ovKey(), legacy = $("month").value;
+  if (!OV[k]) {
+    // alte Einträge aus Versionen ohne Person (Schlüssel nur "2026-10") übernehmen –
+    // nur bei einer CSV mit genau einer Person, sonst wäre unklar, wem sie gehören
+    if (OV[legacy] && badges.people.length === 1) { OV[k] = OV[legacy]; delete OV[legacy]; saveOV(); }
+    else OV[k] = {};
+  }
+  return OV[k];
+}
 const saveOV = () => { try { localStorage.setItem("ts-ov", JSON.stringify(OV)); return true; } catch { return false; } };
 const $ = id => document.getElementById(id);
 
@@ -830,6 +865,16 @@ function showErr(kind, fileName) {
   e.classList.remove("show"); void e.offsetWidth; e.classList.add("show");
 }
 function hideErr() { $("err").classList.remove("show"); }
+function usePerson(n) {
+  badges.name = n; badges.days = badges.users[n];
+  months = monthsIn(badges.days);
+  $("month").innerHTML = ""; fillMonths();
+  $("name").value = n;
+}
+function whoLine() {
+  const multi = badges.people.length > 1;
+  return (multi ? T("persons")(badges.people.length) : badges.name || "") + " · " + months.length + " " + T("loaded");
+}
 async function load(file) {
   if (!/\.(csv|txt)$/i.test(file.name) && !/csv|text/.test(file.type)) { showErr("errType", file.name); return; }
   let b;
@@ -838,16 +883,19 @@ async function load(file) {
   const ms = monthsIn(b.days);
   if (!ms.length) { showErr("errNoData", file.name); return; }
   hideErr();
-  months = ms;
   badges = b; badges.file = file.name;
+  // mehrere Personen in der CSV -> Auswahl anzeigen, zuletzt gewählte Person bevorzugen
+  let pick = b.people[0];
+  try { const last = localStorage.getItem("ts-person"); if (b.people.includes(last)) pick = last; } catch {}
+  $("person").innerHTML = b.people.map(n => `<option>${n.replace(/</g, "&lt;")}</option>`).join("");
+  $("person").value = pick;
+  $("personBox").classList.toggle("hidden", b.people.length < 2);
+  usePerson(pick);
   const now = new Date(), prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
-  $("month").innerHTML = "";
-  fillMonths();
   $("month").value = months.includes(prevKey) ? prevKey : months[months.length - 1];
-  $("name").value = badges.name || "";
   $("fileName").textContent = file.name;
-  $("fileWho").textContent = (badges.name || "") + " · " + months.length + " " + T("loaded");
+  $("fileWho").textContent = whoLine();
   $("drop").classList.add("hidden"); $("steps").classList.add("hidden"); $("fileCard").classList.remove("hidden");
   $("ui").classList.remove("hidden");
   [$("fileCard"), document.querySelector(".controls"), ...document.querySelectorAll(".tile"), $("sum"), document.querySelector(".tablecard")]
@@ -859,7 +907,7 @@ async function load(file) {
 
 function render() {
   const key = $("month").value, [y, m] = key.split("-").map(Number);
-  const ov = OV[key] || (OV[key] = {});
+  const ov = curOV();
   last = { y, m, r: buildContent(TPL["content.xml"], badges, y, m, $("name").value, parseFloat($("hours").value) || 9, { incompleteLabel: T("incomplete"), overrides: ov }) };
   const r = last.r, wd = x => T("wd")[x];
   countUp($("tDays"), r.worked, String);
@@ -873,7 +921,7 @@ function render() {
   prevOpen = open;
   $("sum").textContent = open ? `${T("fill")}: ${r.missing.map(x => x.day + ". " + wd(x.wd) + (x.kind === "incomplete" ? ` (${T("incomplete")})` : "")).join(", ")}` : "";
   $("tblTitle").textContent = T("months")[m - 1] + " " + y;
-  if (badges) $("fileWho").textContent = (badges.name || "") + " · " + months.length + " " + T("loaded");
+  if (badges) $("fileWho").textContent = whoLine();
   $("saved").innerHTML = (Object.keys(ov).length ? T("saved") : "") + (r.missing.length ? `<span class="selhint">${T("selHint")}</span>` : "");
   const shiftSel = x => `<select data-day="${x.day}" data-k="shift" class="${x.shiftSel ? "set" : ""}">` +
     `<option value="0">${T("auto")} (${hm(x.shiftAuto)})</option>` +
@@ -990,6 +1038,13 @@ drop.ondragover = e => { e.preventDefault(); drop.classList.add("hover"); };
 drop.ondragleave = () => drop.classList.remove("hover");
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove("hover"); e.dataTransfer.files[0] && load(e.dataTransfer.files[0]); };
 ["name", "hours"].forEach(id => $(id).addEventListener("input", render));
+$("person").addEventListener("input", () => {
+  const cur = $("month").value;
+  usePerson($("person").value);
+  try { localStorage.setItem("ts-person", $("person").value); } catch {}
+  if (months.includes(cur)) $("month").value = cur;
+  animRows = true; prevOpen = null; sel.clear(); lastSel = null; render();
+});
 $("month").addEventListener("input", () => { animRows = true; prevOpen = null; sel.clear(); lastSel = null; render(); });
 addEventListener("resize", moveThumb);
 document.fonts && document.fonts.ready.then(moveThumb);
@@ -1003,7 +1058,7 @@ $("hours").addEventListener("input", () => { try { localStorage.setItem("ts-hour
 $("bulk").addEventListener("click", e => {
   const btn = e.target.closest("[data-bulk]");
   if (btn) {
-    const ov = OV[$("month").value];
+    const ov = curOV();
     sel.forEach(d => { ov[d] = ov[d] || {}; ov[d].status = btn.dataset.bulk; });
     saveOV();
   }
@@ -1014,7 +1069,7 @@ $("change").onclick = () => $("file").click();
 document.querySelectorAll("#fmt button").forEach(b => b.onclick = () => setFmt(b.dataset.f));
 $("reset").onclick = async () => {
   if (await ask({ title: T("resetQ"), text: T("resetD"), yes: T("resetYes"), no: T("cancel"), danger: true, icon: "↺" })) {
-    OV[$("month").value] = {}; saveOV(); sel.clear(); animRows = true; render();
+    OV[ovKey()] = {}; saveOV(); sel.clear(); animRows = true; render();
   }
 };
 $("tb").addEventListener("click", e => {
@@ -1032,14 +1087,14 @@ $("tb").addEventListener("click", e => {
   }
   const tbtn = e.target.closest("[data-time]");
   if (tbtn) {
-    const d = tbtn.dataset.time, ov = OV[$("month").value];
+    const d = tbtn.dataset.time, ov = curOV();
     if (ov[d] && ov[d].status && ov[d].status !== "none") { ov[d].status = "none"; saveOV(); render(); }
     const inp = $("tb").querySelector(`.tm[data-day="${d}"][data-k="${$("tb").querySelector(`.tm[data-day="${d}"][data-k="tin"]`).value ? "tout" : "tin"}"]`);
     inp.classList.add("want"); inp.focus();
     return;
   }
   const chip = e.target.closest(".chip"); if (!chip) return;
-  const box = chip.parentElement, d = +box.dataset.day, ov = OV[$("month").value];
+  const box = chip.parentElement, d = +box.dataset.day, ov = curOV();
   ov[d] = ov[d] || {};
   ov[d].status = box.dataset.cur === chip.dataset.st ? "none" : chip.dataset.st;
   saveOV();
@@ -1060,7 +1115,7 @@ $("tb").addEventListener("change", e => {
   if (el.classList.contains("tm")) {
     const v = parseTime(el.value);
     if (Number.isNaN(v)) { el.classList.remove("bad"); void el.offsetWidth; el.classList.add("bad"); setTimeout(render, 650); return; }
-    const ov = OV[$("month").value], d = +el.dataset.day, k = el.dataset.k;
+    const ov = curOV(), d = +el.dataset.day, k = el.dataset.k;
     const row = last.r.rows.find(x => x.day === d), orig = k === "tin" ? row.origIn : row.origOut;
     ov[d] = ov[d] || {};
     if (v === null || v === orig) delete ov[d][k]; else ov[d][k] = v;
@@ -1070,7 +1125,7 @@ $("tb").addEventListener("change", e => {
     if (k === "tin" && v !== null && nxt && !nxt.value) { nxt.classList.add("want"); nxt.focus(); }
     return;
   }
-  const ov = OV[$("month").value], d = +el.dataset.day;
+  const ov = curOV(), d = +el.dataset.day;
   ov[d] = ov[d] || {};
   ov[d][el.dataset.k] = el.dataset.k === "shift" ? +el.value : el.value;
   saveOV();
