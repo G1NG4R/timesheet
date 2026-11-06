@@ -142,6 +142,23 @@
   .tm.popped { animation: pop .45s var(--spring); }
   .tm.bad { animation: shake .4s; box-shadow: 0 0 0 2px var(--neg); }
   @keyframes shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+  .modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(0,0,0,.18); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    opacity: 0; pointer-events: none; transition: opacity .25s var(--ease); }
+  .modal.show { opacity: 1; pointer-events: auto; }
+  .modal .sheet { width: min(440px, calc(100vw - 40px)); background: rgba(255,255,255,.92); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-radius: 20px; padding: 24px 22px 18px; text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,.25); transform: scale(.92) translateY(8px); transition: transform .45s var(--spring); }
+  .modal.show .sheet { transform: none; }
+  .modal .ico { width: 44px; height: 44px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,159,10,.15); color: var(--warn); font: 700 22px/1 var(--display); }
+  .modal .ico.danger { background: rgba(255,59,48,.12); color: var(--neg); }
+  .modal h3 { margin: 0 0 6px; font: 600 18px/1.25 var(--display); letter-spacing: -.02em; }
+  .modal p { margin: 0 0 18px; color: var(--mute); font-size: 14px; }
+  .mbtns { display: flex; gap: 8px; }
+  .mb { flex: 1; white-space: nowrap; font: 500 14.5px/1 var(--font); padding: 13px 12px; border-radius: 12px; border: 0; cursor: pointer; transition: transform .2s var(--spring), background .2s; }
+  .mb:active { transform: scale(.97); }
+  .mb.sec { background: var(--fill); color: var(--ink); }
+  .mb.pri { background: var(--ink); color: #fff; }
+  .mb.pri.danger { background: var(--neg); }
+  tr.spot td { animation: flash 1.6s var(--ease); background: rgba(255,159,10,.18); }
   span.hol { color: #c26a00; font-size: 13px; margin-left: 8px; }
   span.inc { color: #c77c00; font-size: 13px; margin-left: 8px; }
 
@@ -298,6 +315,14 @@
   </footer>
 </main>
 <div id="print"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="sheet">
+    <div class="ico" id="mIco">!</div>
+    <h3 id="mTitle"></h3>
+    <p id="mText"></p>
+    <div class="mbtns"><button type="button" class="mb sec" id="mNo"></button><button type="button" class="mb pri" id="mYes"></button></div>
+  </div>
+</div>
 <div class="bulk" id="bulk" aria-hidden="true">
   <span class="cnt" id="bulkCnt"></span>
   <span class="sep"></span>
@@ -589,6 +614,7 @@ const TPL = {"mimetype": "application/vnd.oasis.opendocument.spreadsheet", "cont
 const I18N = {
   de: {
     title: "Timesheet-Generator",
+    warnT: n => n === 1 ? "Noch 1 offener Tag" : `Noch ${n} offene Tage`, warnD: "Diese Tage haben weder Badge noch Status. Trotzdem herunterladen?", warnYes: "Trotzdem herunterladen", warnNo: "Zu den offenen Tagen",
     edited: "Manuell geändert – Badge war", added: "Manuell eingetragen", editTip: "Klicken zum Korrigieren (z. B. 17:30)", r6: "Vergessen zu badgen? Start- oder Endzeit einfach anklicken und korrigieren (z. B. 17:30). Geänderte Zeiten sind orange markiert, leeren stellt den Badge-Wert wieder her.",
     clearSt: "Leeren", selN: n => n === 1 ? "1 Tag ausgewählt" : `${n} Tage ausgewählt`, selHint: "Tipp: Kreis anklicken, Shift-Klick wählt mehrere Tage",
     s1t: "Badge-Export holen", s1d: "Deine Pointages (Badge-Zeiten) für den Monat als CSV exportieren.",
@@ -618,6 +644,7 @@ const I18N = {
   },
   fr: {
     title: "Générateur de timesheet",
+    warnT: n => n === 1 ? "Encore 1 jour à compléter" : `Encore ${n} jours à compléter`, warnD: "Ces jours n’ont ni pointage ni statut. Télécharger quand même ?", warnYes: "Télécharger quand même", warnNo: "Voir les jours",
     edited: "Modifié manuellement – pointage", added: "Saisi manuellement", editTip: "Cliquer pour corriger (ex. 17:30)", r6: "Oubli de pointage ? Cliquez sur l’heure de début ou de fin pour la corriger (ex. 17:30). Les heures modifiées sont en orange ; vider le champ rétablit le pointage.",
     clearSt: "Effacer", selN: n => n === 1 ? "1 jour sélectionné" : `${n} jours sélectionnés`, selHint: "Astuce : cliquez sur le cercle, Maj+clic sélectionne plusieurs jours",
     s1t: "Exporter les pointages", s1d: "Exportez vos pointages du mois au format CSV.",
@@ -647,6 +674,7 @@ const I18N = {
   },
   en: {
     title: "Timesheet generator",
+    warnT: n => n === 1 ? "1 day still open" : `${n} days still open`, warnD: "These days have neither a badge nor a status. Download anyway?", warnYes: "Download anyway", warnNo: "Show open days",
     edited: "Edited manually – badge was", added: "Entered manually", editTip: "Click to correct (e.g. 17:30)", r6: "Forgot to badge? Click the start or end time to correct it (e.g. 17:30). Edited times are marked orange; clearing the field restores the badge value.",
     clearSt: "Clear", selN: n => n === 1 ? "1 day selected" : `${n} days selected`, selHint: "Tip: click the circle, Shift-click selects several days",
     s1t: "Get the badge export", s1d: "Export your Pointages (badge times) for the month as CSV.",
@@ -856,7 +884,30 @@ function buildPrint() {
     <tbody>${rows}<tr class="gap"><td colspan="6"></td></tr>
     <tr class="tot"><td style="border:0;background:none" colspan="3"></td><td>Total</td><td>${hm(r.total)}</td><td class="n"></td></tr></tbody></table>`;
 }
-function download() {
+function ask({ title, text, yes, no, danger = false, icon = "!" }) {
+  const m = $("modal");
+  $("mTitle").textContent = title; $("mText").textContent = text;
+  $("mYes").textContent = yes; $("mNo").textContent = no;
+  $("mYes").classList.toggle("danger", danger); $("mIco").classList.toggle("danger", danger); $("mIco").textContent = icon;
+  m.classList.add("show"); m.setAttribute("aria-hidden", "false");
+  setTimeout(() => $("mYes").focus(), 50);
+  return new Promise(res => {
+    const done = v => { m.classList.remove("show"); m.setAttribute("aria-hidden", "true"); $("mYes").onclick = $("mNo").onclick = m.onclick = document.onkeydown = null; res(v); };
+    $("mYes").onclick = () => done(true);
+    $("mNo").onclick = () => done(false);
+    m.onclick = e => { if (e.target === m) done(false); };
+    document.onkeydown = e => { if (e.key === "Escape") done(false); };
+  });
+}
+function spotFirstOpen() {
+  const d = last.r.missing[0]?.day; if (!d) return;
+  const tr = $("tb").querySelector(`[data-day="${d}"]`)?.closest("tr"); if (!tr) return;
+  tr.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+  last.r.missing.forEach(x => { const t = $("tb").querySelector(`[data-day="${x.day}"]`)?.closest("tr"); if (t) { t.classList.remove("spot"); void t.offsetWidth; t.classList.add("spot"); } });
+}
+async function download() {
+  const n = last.r.missing.length;
+  if (n && !(await ask({ title: T("warnT")(n), text: T("warnD"), yes: T("warnYes"), no: T("warnNo") }))) { spotFirstOpen(); return; }
   const btn = $("dl"), lbl = btn.querySelector("span");
   let msg = T("dlDone");
   if (fmt === "ods") saveBlob(buildOds(TPL, last.r.xml), "application/vnd.oasis.opendocument.spreadsheet", "ods");
