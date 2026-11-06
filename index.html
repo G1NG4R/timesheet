@@ -41,6 +41,13 @@
   .file .who { color: var(--mute); font-size: 13px; }
   .file .grow { flex: 1; min-width: 0; }
 
+  .steps { list-style: none; padding: 0; margin: 16px 0 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .steps li { display: flex; gap: 12px; align-items: start; padding: 16px 18px; background: var(--card); border-radius: 18px; box-shadow: 0 1px 1px rgba(0,0,0,.02), 0 4px 16px rgba(0,0,0,.04); animation: rise .9s var(--ease) both; }
+  .steps li:nth-child(1) { animation-delay: 300ms; } .steps li:nth-child(2) { animation-delay: 370ms; } .steps li:nth-child(3) { animation-delay: 440ms; }
+  .steps .no { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font: 600 13px/1 var(--display); }
+  .steps b { display: block; font: 600 15px/1.3 var(--display); letter-spacing: -.015em; margin-top: 2px; }
+  .steps p { margin: 4px 0 0; color: var(--mute); font-size: 13px; line-height: 1.45; }
+  @media (max-width: 680px) { .steps { grid-template-columns: 1fr; } }
   details.rules { margin: 16px 4px 0; color: var(--mute); font-size: 13.5px; }
   details.rules summary { cursor: pointer; color: var(--ink); font-weight: 500; list-style: none; display: inline-flex; gap: 6px; align-items: center; }
   details.rules summary::-webkit-details-marker { display: none; }
@@ -83,7 +90,8 @@
   th { text-align: left; font-size: 12px; color: var(--faint); font-weight: 500; padding: 8px 14px; border-bottom: 1px solid var(--line); }
   td { padding: 8px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; height: 46px; }
   tr:last-child td { border-bottom: 0; }
-  td:first-child { font: 600 14px var(--display); width: 48px; padding-left: 20px; font-variant-numeric: tabular-nums; }
+  td:first-child { font: 600 14px var(--display); width: 74px; padding-left: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td:first-child:not(:has(.ck)) { padding-left: 42px; }
   td.wd { color: var(--mute); width: 48px; }
   td.t { font-family: var(--mono); font-size: 13.5px; letter-spacing: 0; }
   td.ot-pos { color: var(--ok); font-weight: 600; }
@@ -98,6 +106,76 @@
   select.st-MALADIE { background-color: #ffff00; font-weight: 600; }
   select.st-FERIE { background-color: #ffb66c; font-weight: 600; }
   select.st-recup { background-color: #6fa8dc; color: #fff; font-weight: 600; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E"); }
+  .chips { display: inline-flex; gap: 4px; flex-wrap: wrap; vertical-align: middle; }
+  .chip { font: 600 12px/1 var(--font); padding: 6px 10px; border-radius: 980px; border: 0; background: var(--fill); color: var(--mute); cursor: pointer; transition: background .2s var(--ease), color .2s, transform .3s var(--spring); }
+  .chip:hover { background: rgba(118,118,128,.2); color: var(--ink); }
+  .chip:active { transform: scale(.94); }
+  .chip.on.CONGE { background: #00a933; color: #fff; }
+  .chip.on.recup { background: #6fa8dc; color: #fff; }
+  .chip.on.MALADIE { background: #ffff00; color: #1d1d1f; }
+  .chip.on.FERIE { background: #ffb66c; color: #1d1d1f; }
+  .chip.popped { animation: pop .45s var(--spring); }
+  tr.miss .chip:not(.on) { background: rgba(255,159,10,.14); color: #8a5a00; }
+  td .ck { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,.22); background: #fff; padding: 0; margin: 0 8px 0 0; vertical-align: -3px; cursor: pointer; transition: background .2s, border-color .2s, transform .3s var(--spring); position: relative; }
+  td .ck:hover { border-color: var(--ink); }
+  tr.sel td .ck { background: var(--ink); border-color: var(--ink); }
+  tr.sel td .ck::after { content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  tr.sel td { background: rgba(0,0,0,.035) !important; }
+  tr.miss td:first-child::before { display: none; }
+  .bulk { position: fixed; left: 50%; bottom: 24px; z-index: 30; display: flex; align-items: center; gap: 6px; padding: 8px 10px 8px 16px; border-radius: 980px;
+    background: rgba(29,29,31,.88); color: #fff; backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); box-shadow: 0 12px 40px rgba(0,0,0,.25);
+    transform: translate(-50%, 140%); opacity: 0; transition: transform .5s var(--spring), opacity .25s var(--ease); pointer-events: none; }
+  .bulk.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+  .bulk .cnt { font: 600 13px/1 var(--font); white-space: nowrap; }
+  .bulk .sep { width: 1px; height: 20px; background: rgba(255,255,255,.2); margin: 0 4px; }
+  .bulk .chip:not(.on) { background: rgba(255,255,255,.14); color: #fff; }
+  .bulk .x { background: none; border: 0; color: rgba(255,255,255,.7); font-size: 14px; cursor: pointer; padding: 6px 8px; border-radius: 50%; }
+  .bulk .x:hover { color: #fff; background: rgba(255,255,255,.12); }
+  .selhint { color: var(--faint); font-size: 12px; margin-left: 8px; }
+  .tm { width: 64px; min-width: 0; font: 400 13.5px/1.2 var(--mono); letter-spacing: 0; color: inherit; background: transparent; border: 0; border-radius: 7px; padding: 5px 6px; margin-left: -6px; transition: background .2s, box-shadow .2s; }
+  .tm:hover { background: var(--fill); }
+  .tm:focus { background: #fff; box-shadow: 0 0 0 2px var(--ink); outline: none; }
+  .tm::placeholder { color: transparent; }
+  tr:hover .tm::placeholder, .tm:focus::placeholder { color: var(--faint); }
+  tr.miss .tm[placeholder="?"]::placeholder { color: #c77c00; }
+  .tm.ed { background: rgba(255,159,10,.14); color: #8a5a00; font-weight: 600; }
+  .tm.popped { animation: pop .45s var(--spring); }
+  .tm.bad { animation: shake .4s; box-shadow: 0 0 0 2px var(--neg); }
+  @keyframes shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+  .modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(0,0,0,.18); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    opacity: 0; pointer-events: none; transition: opacity .25s var(--ease); }
+  .modal.show { opacity: 1; pointer-events: auto; }
+  .modal .sheet { width: min(440px, calc(100vw - 40px)); background: rgba(255,255,255,.92); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-radius: 20px; padding: 24px 22px 18px; text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,.25); transform: scale(.92) translateY(8px); transition: transform .45s var(--spring); }
+  .modal.show .sheet { transform: none; }
+  .modal .ico { width: 44px; height: 44px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,159,10,.15); color: var(--warn); font: 700 22px/1 var(--display); }
+  .modal .ico.danger { background: rgba(255,59,48,.12); color: var(--neg); }
+  .modal h3 { margin: 0 0 6px; font: 600 18px/1.25 var(--display); letter-spacing: -.02em; }
+  .modal p { margin: 0 0 18px; color: var(--mute); font-size: 14px; }
+  .mbtns { display: flex; gap: 8px; }
+  .mb { flex: 1; white-space: nowrap; font: 500 14.5px/1 var(--font); padding: 13px 12px; border-radius: 12px; border: 0; cursor: pointer; transition: transform .2s var(--spring), background .2s; }
+  .mb:active { transform: scale(.97); }
+  .mb.sec { background: var(--fill); color: var(--ink); }
+  .mb.pri { background: var(--ink); color: #fff; }
+  .mb.pri.danger { background: var(--neg); }
+  tr.spot td { animation: flash 1.6s var(--ease); background: rgba(255,159,10,.18); }
+  .adv { position: relative; align-self: end; }
+  .gear { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: var(--mute); font: 500 13px/1 var(--font); cursor: pointer; position: relative; transition: background .2s, color .2s; }
+  .gear:hover, .gear[aria-expanded="true"] { background: var(--fill); color: var(--ink); }
+  .gear svg { width: 16px; height: 16px; }
+  .gear .dotc { display: none; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+  .gear.changed .dotc { display: block; }
+  .pop { position: absolute; top: calc(100% + 10px); left: 0; width: 260px; padding: 14px; border-radius: 14px; background: #fff;
+    box-shadow: 0 16px 40px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.04); opacity: 0; transform: translateY(-6px) scale(.97); transform-origin: top left; pointer-events: none; transition: opacity .2s var(--ease), transform .35s var(--spring); z-index: 25; }
+  .pop.show { opacity: 1; transform: none; pointer-events: auto; }
+  .pop input { width: 100%; }
+  .pop p { margin: 8px 0 0; font-size: 12px; color: var(--mute); line-height: 1.4; }
+  .err { display: none; gap: 12px; align-items: start; margin-top: 12px; padding: 14px 16px; border-radius: 14px; background: #fff1f0; color: #a3271e; box-shadow: 0 0 0 1px rgba(255,59,48,.18); }
+  .err.show { display: flex; animation: rise .5s var(--ease) both, shake .45s .1s; }
+  .err svg { width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; }
+  .err b { display: block; font: 600 14.5px/1.3 var(--display); }
+  .err span { font-size: 13px; color: #b5463d; }
+  #drop.bad { border-color: var(--neg); }
   span.hol { color: #c26a00; font-size: 13px; margin-left: 8px; }
   span.inc { color: #c77c00; font-size: 13px; margin-left: 8px; }
 
@@ -208,17 +286,30 @@
     <div class="grow"><div class="nm" id="fileName"></div><div class="who" id="fileWho"></div></div>
     <button class="link" id="change" data-t="change"></button>
   </div>
-  <input type="file" id="file" accept=".csv" class="hidden">
+  <div class="err" id="err" role="alert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg><div><b></b><span></span></div></div>
+  <input type="file" id="file" accept=".csv,text/csv" class="hidden">
+
+  <ol class="steps" id="steps">
+    <li><span class="no">1</span><div><b data-t="s1t"></b><p data-t="s1d"></p></div></li>
+    <li><span class="no">2</span><div><b data-t="s2t"></b><p data-t="s2d"></p></div></li>
+    <li><span class="no">3</span><div><b data-t="s3t"></b><p data-t="s3d"></p></div></li>
+  </ol>
 
   <details class="rules"><summary data-t="how"></summary>
-    <ul><li data-t="r1"></li><li data-t="r2"></li><li data-t="r3"></li><li data-t="r4"></li><li data-t="r5"></li></ul>
+    <ul><li data-t="r1"></li><li data-t="r2"></li><li data-t="r3"></li><li data-t="r4"></li><li data-t="r5"></li><li data-t="r6"></li></ul>
   </details>
 
   <div id="ui" class="hidden">
     <div class="card controls">
       <label><span data-t="month"></span><select id="month"></select></label>
       <label><span data-t="name"></span><input id="name" style="width:190px;min-width:0"></label>
-      <label><span data-t="shiftLen"></span><input id="hours" type="number" step="0.25" value="9" style="min-width:90px;width:90px"></label>
+      <div class="adv">
+        <button type="button" class="gear" id="gear" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span data-t="adv"></span><i class="dotc"></i></button>
+        <div class="pop" id="advPop">
+          <label><span data-t="shiftLen"></span><input id="hours" type="number" step="0.25" min="1" max="14" value="9"></label>
+          <p data-t="shiftHint"></p>
+        </div>
+      </div>
       <div class="spacer"></div>
       <div class="actions">
       <div class="fmt" id="fmt"><span class="thumb"></span><button data-f="ods">ODS</button><button data-f="xlsx">XLSX</button><button data-f="pdf">PDF</button></div>
@@ -248,6 +339,25 @@
   </footer>
 </main>
 <div id="print"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="sheet">
+    <div class="ico" id="mIco">!</div>
+    <h3 id="mTitle"></h3>
+    <p id="mText"></p>
+    <div class="mbtns"><button type="button" class="mb sec" id="mNo"></button><button type="button" class="mb pri" id="mYes"></button></div>
+  </div>
+</div>
+<div class="bulk" id="bulk" aria-hidden="true">
+  <span class="cnt" id="bulkCnt"></span>
+  <span class="sep"></span>
+  <button type="button" class="chip on CONGE" data-bulk="CONGE"></button>
+  <button type="button" class="chip on recup" data-bulk="recup"></button>
+  <button type="button" class="chip on MALADIE" data-bulk="MALADIE"></button>
+  <button type="button" class="chip on FERIE" data-bulk="FERIE"></button>
+  <button type="button" class="chip" data-bulk="none" data-t="clearSt"></button>
+  <span class="sep"></span>
+  <button type="button" class="x" id="bulkX" aria-label="close">✕</button>
+</div>
 
 <script>
 // ---- Kernlogik (läuft im Browser und in Node zum Testen) ----
@@ -355,9 +465,12 @@ function buildContent(tpl, badges, year, month, name, hours, opts = {}) {
     const dow = new Date(year, month - 1, day).getDay();
     const wd = WD[dow], weekend = dow === 0 || dow === 6;
     const holiday = hol[`${mm}-${dd}`] || null;
-    const b = badges.days[`${year}-${mm}-${dd}`] || {};
+    const raw = badges.days[`${year}-${mm}-${dd}`] || {};
     const o = ov[day] || {};
-    const r = { day, wd, s: "", e: "", ot: "", kind: "", holiday, status: "", shiftSel: o.shift || 0 };
+    // manuelle Korrektur: o.tin / o.tout (Minuten) überschreiben die Badge-Zeiten
+    const b = { in: o.tin ?? raw.in, out: o.tout ?? raw.out };
+    const r = { day, wd, s: "", e: "", ot: "", kind: "", holiday, status: "", shiftSel: o.shift || 0,
+      editIn: o.tin != null, editOut: o.tout != null, origIn: raw.in, origOut: raw.out };
     let cells = cell(wd);
     if (b.in !== undefined && b.out !== undefined) {
       const ot = overtime(b.in, b.out, soll, o.shift || 0); total += ot.min; worked++;
@@ -525,6 +638,17 @@ const TPL = {"mimetype": "application/vnd.oasis.opendocument.spreadsheet", "cont
 const I18N = {
   de: {
     title: "Timesheet-Generator",
+    errTypeT: "Falsches Dateiformat", errTypeD: "Bitte den Pointages-Export als CSV auswählen (nicht Excel oder PDF).",
+    errNoDataT: "Keine Badge-Einträge gefunden", errNoDataD: "Ist das wirklich der Pointages-Export? Erwartet werden Spalten wie Utilisateur, Date und Action.",
+    errReadT: "Datei konnte nicht gelesen werden", errReadD: "Bitte die CSV nochmal exportieren und erneut versuchen.",
+    resetD: "Alle Status, Schichten und korrigierten Zeiten dieses Monats werden entfernt.", resetYes: "Zurücksetzen", cancel: "Abbrechen",
+    adv: "Erweitert", shiftHint: "Standard: 9 h = 8 h Arbeit + 1 h Pause. Nur ändern, wenn deine Schicht anders ist.",
+    warnT: n => n === 1 ? "Noch 1 offener Tag" : `Noch ${n} offene Tage`, warnD: "Diese Tage haben weder Badge noch Status. Trotzdem herunterladen?", warnYes: "Trotzdem herunterladen", warnNo: "Zu den offenen Tagen",
+    edited: "Manuell geändert – Badge war", added: "Manuell eingetragen", editTip: "Klicken zum Korrigieren (z. B. 17:30)", r6: "Vergessen zu badgen? Start- oder Endzeit einfach anklicken und korrigieren (z. B. 17:30). Geänderte Zeiten sind orange markiert, leeren stellt den Badge-Wert wieder her.",
+    clearSt: "Leeren", selN: n => n === 1 ? "1 Tag ausgewählt" : `${n} Tage ausgewählt`, selHint: "Tipp: Kreis anklicken, Shift-Klick wählt mehrere Tage",
+    s1t: "Badge-Export holen", s1d: "Deine Pointages (Badge-Zeiten) für den Monat als CSV exportieren.",
+    s2t: "Hier reinziehen", s2d: "CSV ins Feld oben ziehen. Name und Monat werden automatisch erkannt.",
+    s3t: "Prüfen & herunterladen", s3d: "Gelb markierte Tage ausfüllen (CONGE, recup …), Format wählen – fertig.",
     tip: { ods: "LibreOffice-Format wie eure Vorlage – später noch bearbeitbar.", xlsx: "Excel-Datei mit gleichem Layout – in Excel bearbeitbar.", pdf: "Fertiges Dokument zum Abgeben oder Mailen. Öffnet den Druckdialog → „Als PDF speichern“." },
     oss: "Open Source auf GitHub", pdfDone: "Druckdialog: „Als PDF speichern“ wählen", dlDone: "Heruntergeladen", change: "Andere Datei", how: "So wird gerechnet", loaded: "Monate im Export", foot: "Läuft komplett lokal im Browser – keine Daten verlassen diesen PC.",
     r1: "Die Schicht (08:00, 09:00 oder 10:00) wird aus dem Eintritt erkannt und kann pro Tag geändert werden.",
@@ -537,10 +661,10 @@ const I18N = {
     st: { CONGE: "CONGE", recup: "recup", MALADIE: "Krank", FERIE: "Feiertag" },
     hol: { newyear: "Neujahr", eastermon: "Ostermontag", labour: "Tag der Arbeit", europe: "Europatag", ascension: "Christi Himmelfahrt", whitmon: "Pfingstmontag", national: "Nationalfeiertag", assumption: "Mariä Himmelfahrt", allsaints: "Allerheiligen", xmas: "Weihnachten", stephen: "Stephanstag" },
     rules2: "Gelbe Tage: Status rechts auswählen (CONGE, recup, Krank, Feiertag). Luxemburger Feiertage werden automatisch eingetragen. Schicht pro Tag änderbar, falls die Erkennung falsch liegt.",
-    sub: "Badge-Export (Pointages-CSV) reinziehen, Monat wählen, Timesheet als .ods herunterladen. Alles läuft lokal im Browser.",
+    sub: "Badge-Export (Pointages-CSV) reinziehen, Monat wählen, Timesheet als ODS, XLSX oder PDF herunterladen. Alles läuft lokal im Browser.",
     rules: "Regeln: Schicht 8/9/10 Uhr wird aus dem Eintritt erkannt · Zeit vor Schichtbeginn zählt nicht · Overtime erst nach Schichtende, nur volle 15 Min · zu spät / früher gehen wird abgezogen.",
     drop: "CSV hier ablegen", click: "oder klicken zum Auswählen",
-    month: "Monat", name: "Name", shiftLen: "Schicht inkl. Pause", download: "Herunterladen",
+    month: "Monat", name: "Name", shiftLen: "Schichtlänge inkl. Pause (h)", download: "Herunterladen",
     day: "Tag", shift: "Schicht", start: "Start", end: "Ende",
     days: "Arbeitstage", total: "Overtime gesamt", fill: "Selbst eintragen (CONGE / recup …)",
     nobadge: "kein Badge", incomplete: "Badge unvollständig", noData: "Keine Badge-Einträge in der Datei gefunden.",
@@ -549,6 +673,17 @@ const I18N = {
   },
   fr: {
     title: "Générateur de timesheet",
+    errTypeT: "Format de fichier incorrect", errTypeD: "Veuillez choisir l’export des pointages au format CSV (pas Excel ni PDF).",
+    errNoDataT: "Aucun pointage trouvé", errNoDataD: "Est-ce bien l’export des pointages ? Colonnes attendues : Utilisateur, Date, Action.",
+    errReadT: "Impossible de lire le fichier", errReadD: "Exportez à nouveau le CSV et réessayez.",
+    resetD: "Tous les statuts, horaires et heures corrigées de ce mois seront supprimés.", resetYes: "Réinitialiser", cancel: "Annuler",
+    adv: "Avancé", shiftHint: "Par défaut : 9 h = 8 h de travail + 1 h de pause. À modifier seulement si votre horaire est différent.",
+    warnT: n => n === 1 ? "Encore 1 jour à compléter" : `Encore ${n} jours à compléter`, warnD: "Ces jours n’ont ni pointage ni statut. Télécharger quand même ?", warnYes: "Télécharger quand même", warnNo: "Voir les jours",
+    edited: "Modifié manuellement – pointage", added: "Saisi manuellement", editTip: "Cliquer pour corriger (ex. 17:30)", r6: "Oubli de pointage ? Cliquez sur l’heure de début ou de fin pour la corriger (ex. 17:30). Les heures modifiées sont en orange ; vider le champ rétablit le pointage.",
+    clearSt: "Effacer", selN: n => n === 1 ? "1 jour sélectionné" : `${n} jours sélectionnés`, selHint: "Astuce : cliquez sur le cercle, Maj+clic sélectionne plusieurs jours",
+    s1t: "Exporter les pointages", s1d: "Exportez vos pointages du mois au format CSV.",
+    s2t: "Déposer ici", s2d: "Glissez le CSV dans la zone ci-dessus. Le nom et le mois sont détectés automatiquement.",
+    s3t: "Vérifier et télécharger", s3d: "Complétez les jours en jaune (CONGE, récup …), choisissez le format – terminé.",
     tip: { ods: "Format LibreOffice comme votre modèle – modifiable par la suite.", xlsx: "Fichier Excel avec la même mise en page – modifiable dans Excel.", pdf: "Document final à remettre ou envoyer. Ouvre l’impression → « Enregistrer au format PDF »." },
     oss: "Open source sur GitHub", pdfDone: "Dans l’impression : « Enregistrer au format PDF »", dlDone: "Téléchargé", change: "Autre fichier", how: "Méthode de calcul", loaded: "mois dans l’export", foot: "Fonctionne entièrement en local – aucune donnée ne quitte ce PC.",
     r1: "L’horaire (08h00, 09h00 ou 10h00) est détecté à l’entrée et peut être modifié par jour.",
@@ -561,10 +696,10 @@ const I18N = {
     st: { CONGE: "CONGE", recup: "récup", MALADIE: "Maladie", FERIE: "Jour férié" },
     hol: { newyear: "Jour de l’An", eastermon: "Lundi de Pâques", labour: "Fête du Travail", europe: "Journée de l’Europe", ascension: "Ascension", whitmon: "Lundi de Pentecôte", national: "Fête nationale", assumption: "Assomption", allsaints: "Toussaint", xmas: "Noël", stephen: "Saint-Étienne" },
     rules2: "Jours en jaune : choisissez le statut à droite (CONGE, récup, maladie, férié). Les jours fériés luxembourgeois sont remplis automatiquement. L’horaire peut être changé par jour si la détection se trompe.",
-    sub: "Déposez l’export des pointages (CSV), choisissez le mois et téléchargez la timesheet en .ods. Tout reste en local dans le navigateur.",
+    sub: "Déposez l’export des pointages (CSV), choisissez le mois et téléchargez la timesheet en ODS, XLSX ou PDF. Tout reste en local dans le navigateur.",
     rules: "Règles : horaire 8h/9h/10h détecté à l’entrée · le temps avant le début de l’horaire ne compte pas · heures sup. seulement après la fin de l’horaire, par tranches complètes de 15 min · retard / départ anticipé déduit.",
     drop: "Déposez le CSV ici", click: "ou cliquez pour choisir",
-    month: "Mois", name: "Nom", shiftLen: "Horaire, pause incl.", download: "Télécharger",
+    month: "Mois", name: "Nom", shiftLen: "Durée de l’horaire, pause incl. (h)", download: "Télécharger",
     day: "Jour", shift: "Horaire", start: "Début", end: "Fin",
     days: "jours travaillés", total: "Heures sup. totales", fill: "À compléter (CONGE / récup …)",
     nobadge: "pas de pointage", incomplete: "pointage incomplet", noData: "Aucun pointage trouvé dans le fichier.",
@@ -573,6 +708,17 @@ const I18N = {
   },
   en: {
     title: "Timesheet generator",
+    errTypeT: "Wrong file type", errTypeD: "Please choose the Pointages export as CSV (not Excel or PDF).",
+    errNoDataT: "No badge entries found", errNoDataD: "Is this really the Pointages export? Expected columns like Utilisateur, Date and Action.",
+    errReadT: "Could not read the file", errReadD: "Please export the CSV again and retry.",
+    resetD: "All statuses, shifts and corrected times for this month will be removed.", resetYes: "Reset", cancel: "Cancel",
+    adv: "Advanced", shiftHint: "Default: 9 h = 8 h work + 1 h break. Only change this if your shift is different.",
+    warnT: n => n === 1 ? "1 day still open" : `${n} days still open`, warnD: "These days have neither a badge nor a status. Download anyway?", warnYes: "Download anyway", warnNo: "Show open days",
+    edited: "Edited manually – badge was", added: "Entered manually", editTip: "Click to correct (e.g. 17:30)", r6: "Forgot to badge? Click the start or end time to correct it (e.g. 17:30). Edited times are marked orange; clearing the field restores the badge value.",
+    clearSt: "Clear", selN: n => n === 1 ? "1 day selected" : `${n} days selected`, selHint: "Tip: click the circle, Shift-click selects several days",
+    s1t: "Get the badge export", s1d: "Export your Pointages (badge times) for the month as CSV.",
+    s2t: "Drop it here", s2d: "Drag the CSV into the area above. Name and month are detected automatically.",
+    s3t: "Check & download", s3d: "Fill in the yellow days (CONGE, recup …), pick a format – done.",
     tip: { ods: "LibreOffice format, same as your template – editable later.", xlsx: "Excel file with the same layout – editable in Excel.", pdf: "Final document to submit or email. Opens the print dialog → “Save as PDF”." },
     oss: "Open source on GitHub", pdfDone: "In the print dialog: “Save as PDF”", dlDone: "Downloaded", change: "Other file", how: "How it is calculated", loaded: "months in export", foot: "Runs entirely in your browser – no data leaves this PC.",
     r1: "The shift (08:00, 09:00 or 10:00) is detected from badge-in and can be changed per day.",
@@ -585,10 +731,10 @@ const I18N = {
     st: { CONGE: "CONGE", recup: "recup", MALADIE: "Sick", FERIE: "Holiday" },
     hol: { newyear: "New Year", eastermon: "Easter Monday", labour: "Labour Day", europe: "Europe Day", ascension: "Ascension Day", whitmon: "Whit Monday", national: "National Day", assumption: "Assumption Day", allsaints: "All Saints’ Day", xmas: "Christmas", stephen: "St Stephen’s Day" },
     rules2: "Yellow days: pick a status on the right (CONGE, recup, sick, holiday). Luxembourg public holidays are filled in automatically. Shift can be changed per day if detection is wrong.",
-    sub: "Drop the badge export (Pointages CSV), pick the month, download the timesheet as .ods. Everything runs locally in your browser.",
+    sub: "Drop the badge export (Pointages CSV), pick the month, download the timesheet as ODS, XLSX or PDF. Everything runs locally in your browser.",
     rules: "Rules: 8/9/10 am shift detected from badge-in · time before shift start doesn’t count · overtime only after shift end, in full 15-min blocks · late arrival / early leave is deducted.",
     drop: "Drop CSV here", click: "or click to choose",
-    month: "Month", name: "Name", shiftLen: "Shift incl. break", download: "Download",
+    month: "Month", name: "Name", shiftLen: "Shift length incl. break (h)", download: "Download",
     day: "Day", shift: "Shift", start: "Start", end: "End",
     days: "working days", total: "Total overtime", fill: "Fill in yourself (CONGE / recup …)",
     nobadge: "no badge", incomplete: "badge incomplete", noData: "No badge entries found in the file.",
@@ -643,6 +789,7 @@ function swapText(el, txt) {
   el.textContent = txt; el.classList.remove("fade-swap"); void el.offsetWidth; el.classList.add("fade-swap");
 }
 let prevOpen = null, animRows = false, flashDay = null;
+const sel = new Set(); let lastSel = null;
 
 function applyLang() {
   document.documentElement.lang = lang;
@@ -652,6 +799,7 @@ function applyLang() {
   });
   document.querySelectorAll("#lang button").forEach(b => b.classList.toggle("on", b.dataset.l === lang));
   document.querySelectorAll("#fmt button").forEach(b => b.dataset.tip = T("tip")[b.dataset.f]);
+  document.querySelectorAll("#bulk [data-bulk]").forEach(b => { if (b.dataset.bulk !== "none") b.textContent = T("st")[b.dataset.bulk]; });
   moveThumb();
   if (badges) { fillMonths(); render(); }
 }
@@ -667,10 +815,22 @@ function decode(buf) {
   catch { return new TextDecoder("windows-1252").decode(buf); }
 }
 
+function showErr(kind, fileName) {
+  const e = $("err");
+  e.querySelector("b").textContent = T(kind + "T");
+  e.querySelector("span").textContent = (fileName ? `„${fileName}“ – ` : "") + T(kind + "D");
+  e.classList.remove("show"); void e.offsetWidth; e.classList.add("show");
+}
+function hideErr() { $("err").classList.remove("show"); }
 async function load(file) {
-  const b = parseBadges(decode(await file.arrayBuffer()));
-  months = monthsIn(b.days);
-  if (!months.length) { alert(T("noData")); return; }
+  if (!/\.(csv|txt)$/i.test(file.name) && !/csv|text/.test(file.type)) { showErr("errType", file.name); return; }
+  let b;
+  try { b = parseBadges(decode(await file.arrayBuffer())); }
+  catch { showErr("errRead", file.name); return; }
+  const ms = monthsIn(b.days);
+  if (!ms.length) { showErr("errNoData", file.name); return; }
+  hideErr();
+  months = ms;
   badges = b; badges.file = file.name;
   const now = new Date(), prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
@@ -680,11 +840,11 @@ async function load(file) {
   $("name").value = badges.name || "";
   $("fileName").textContent = file.name;
   $("fileWho").textContent = (badges.name || "") + " · " + months.length + " " + T("loaded");
-  $("drop").classList.add("hidden"); $("fileCard").classList.remove("hidden");
+  $("drop").classList.add("hidden"); $("steps").classList.add("hidden"); $("fileCard").classList.remove("hidden");
   $("ui").classList.remove("hidden");
   [$("fileCard"), document.querySelector(".controls"), ...document.querySelectorAll(".tile"), $("sum"), document.querySelector(".tablecard")]
     .forEach((el, i) => { el.classList.remove("enter"); void el.offsetWidth; el.style.setProperty("--d", i * 70 + "ms"); el.classList.add("enter"); });
-  prevOpen = null; animRows = true;
+  prevOpen = null; animRows = true; sel.clear(); lastSel = null;
   render();
   setFmt(fmt); setTimeout(moveThumb, 50);
 }
@@ -706,28 +866,45 @@ function render() {
   $("sum").textContent = open ? `${T("fill")}: ${r.missing.map(x => x.day + ". " + wd(x.wd) + (x.kind === "incomplete" ? ` (${T("incomplete")})` : "")).join(", ")}` : "";
   $("tblTitle").textContent = T("months")[m - 1] + " " + y;
   if (badges) $("fileWho").textContent = (badges.name || "") + " · " + months.length + " " + T("loaded");
-  $("saved").textContent = Object.keys(ov).length ? T("saved") : "";
+  $("saved").innerHTML = (Object.keys(ov).length ? T("saved") : "") + (r.missing.length ? `<span class="selhint">${T("selHint")}</span>` : "");
   const shiftSel = x => `<select data-day="${x.day}" data-k="shift" class="${x.shiftSel ? "set" : ""}">` +
     `<option value="0">${T("auto")} (${hm(x.shiftAuto)})</option>` +
     [480, 540, 600].map(v => `<option value="${v}"${x.shiftSel === v ? " selected" : ""}>${hm(v)}–${hm(v + Math.round((parseFloat($("hours").value) || 9) * 60))}</option>`).join("") + "</select>";
-  const statusSel = x => `<select data-day="${x.day}" data-k="status" class="st-${x.status}${x.status !== x.autoStatus ? " set" : ""}">` +
-    ["none", "CONGE", "recup", "MALADIE", "FERIE"].map(v => `<option value="${v}"${x.status === v ? " selected" : ""}>${v === "none" ? T("none") : T("st")[v]}</option>`).join("") + "</select>";
+  const statusSel = x => `<div class="chips" data-day="${x.day}" data-cur="${x.status}">` +
+    ["CONGE", "recup", "MALADIE", "FERIE"].map(v => `<button type="button" class="chip ${v}${x.status === v ? " on" : ""}" data-st="${v}">${T("st")[v]}</button>`).join("") + "</div>";
+  const tm = (x, k) => {
+    const v = k === "tin" ? x.s : x.e, ed = k === "tin" ? x.editIn : x.editOut, orig = k === "tin" ? x.origIn : x.origOut;
+    const val = v && v !== "?" ? v : "";
+    const tip = ed ? (orig != null ? `${T("edited")}: ${hm(orig)}` : T("added")) : T("editTip");
+    return `<input class="tm${ed ? " ed" : ""}" data-day="${x.day}" data-k="${k}" value="${val}" placeholder="${v === "?" ? "?" : "+"}" title="${tip}" spellcheck="false" autocomplete="off">`;
+  };
   $("tb").innerHTML = r.rows.map((x, i) => {
     const missing = r.missing.includes(x);
-    const cls = x.kind === "we" ? "we" : missing ? "miss" : x.holiday ? "hol" : "";
+    const selectable = x.kind === "off" || x.kind === "incomplete";
+    const cls = (x.kind === "we" ? "we" : missing ? "miss" : x.holiday ? "hol" : "") + (sel.has(x.day) ? " sel" : "");
     const hol = x.holiday ? `<span class="hol">${T("hol")[x.holiday]}</span>` : "";
     let shiftTd = "", stTd = "";
     if (x.kind === "work") { shiftTd = shiftSel(x); stTd = hol; }
     else if (x.kind === "off" || x.kind === "incomplete") {
       stTd = statusSel(x) + (hol ? " " + hol : "") + (x.kind === "incomplete" && x.status === "none" ? `<span class="inc">${T("incomplete")}</span>` : "");
     } else stTd = hol;
-    return `<tr class="${cls}${flashDay === x.day ? " flash" : ""}" style="--i:${i}"><td>${x.day}</td><td class="wd">${wd(x.wd)}</td><td>${shiftTd}</td><td class="t">${x.s}</td><td class="t">${x.e}</td><td class="t ${x.ot.startsWith("-") ? "ot-neg" : x.ot && x.ot !== "00h00" && x.ot !== "?" ? "ot-pos" : ""}">${x.ot}</td><td>${stTd}</td></tr>`;
+    return `<tr class="${cls}${flashDay === x.day ? " flash" : ""}" style="--i:${i}"><td>${selectable ? `<button type="button" class="ck" data-day="${x.day}" aria-label="select"></button>` : ""}${x.day}</td><td class="wd">${wd(x.wd)}</td><td>${shiftTd}</td><td class="t">${tm(x, "tin")}</td><td class="t">${tm(x, "tout")}</td><td class="t ${x.ot.startsWith("-") ? "ot-neg" : x.ot && x.ot !== "00h00" && x.ot !== "?" ? "ot-pos" : ""}">${x.ot}</td><td>${stTd}</td></tr>`;
   }).join("");
   const tb = $("tb");
   tb.classList.remove("anim");
   if (animRows && !reduce) { void tb.offsetWidth; tb.classList.add("anim"); }
-  if (flashDay) { const sel = tb.querySelector(`select[data-day="${flashDay}"][data-k="${flashKey}"]`); sel && sel.classList.add("popped"); }
+  if (flashDay) {
+    const el = flashKey === "status" ? tb.querySelector(`.chips[data-day="${flashDay}"] .chip.on`) : tb.querySelector(`[data-day="${flashDay}"][data-k="${flashKey}"]`);
+    el && el.classList.add("popped");
+  }
   animRows = false; flashDay = null;
+  updateBulk();
+}
+function updateBulk() {
+  const b = $("bulk");
+  b.classList.toggle("show", sel.size > 0);
+  b.setAttribute("aria-hidden", sel.size ? "false" : "true");
+  if (sel.size) $("bulkCnt").textContent = T("selN")(sel.size);
 }
 let flashKey = null;
 
@@ -758,7 +935,30 @@ function buildPrint() {
     <tbody>${rows}<tr class="gap"><td colspan="6"></td></tr>
     <tr class="tot"><td style="border:0;background:none" colspan="3"></td><td>Total</td><td>${hm(r.total)}</td><td class="n"></td></tr></tbody></table>`;
 }
-function download() {
+function ask({ title, text, yes, no, danger = false, icon = "!" }) {
+  const m = $("modal");
+  $("mTitle").textContent = title; $("mText").textContent = text;
+  $("mYes").textContent = yes; $("mNo").textContent = no;
+  $("mYes").classList.toggle("danger", danger); $("mIco").classList.toggle("danger", danger); $("mIco").textContent = icon;
+  m.classList.add("show"); m.setAttribute("aria-hidden", "false");
+  setTimeout(() => $("mYes").focus(), 50);
+  return new Promise(res => {
+    const done = v => { m.classList.remove("show"); m.setAttribute("aria-hidden", "true"); $("mYes").onclick = $("mNo").onclick = m.onclick = document.onkeydown = null; res(v); };
+    $("mYes").onclick = () => done(true);
+    $("mNo").onclick = () => done(false);
+    m.onclick = e => { if (e.target === m) done(false); };
+    document.onkeydown = e => { if (e.key === "Escape") done(false); };
+  });
+}
+function spotFirstOpen() {
+  const d = last.r.missing[0]?.day; if (!d) return;
+  const tr = $("tb").querySelector(`[data-day="${d}"]`)?.closest("tr"); if (!tr) return;
+  tr.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+  last.r.missing.forEach(x => { const t = $("tb").querySelector(`[data-day="${x.day}"]`)?.closest("tr"); if (t) { t.classList.remove("spot"); void t.offsetWidth; t.classList.add("spot"); } });
+}
+async function download() {
+  const n = last.r.missing.length;
+  if (n && !(await ask({ title: T("warnT")(n), text: T("warnD"), yes: T("warnYes"), no: T("warnNo") }))) { spotFirstOpen(); return; }
   const btn = $("dl"), lbl = btn.querySelector("span");
   let msg = T("dlDone");
   if (fmt === "ods") saveBlob(buildOds(TPL, last.r.xml), "application/vnd.oasis.opendocument.spreadsheet", "ods");
@@ -776,20 +976,80 @@ function download() {
 
 const drop = $("drop");
 drop.onclick = () => $("file").click();
-$("file").onchange = e => e.target.files[0] && load(e.target.files[0]);
+$("file").onchange = e => { const f = e.target.files[0]; e.target.value = ""; f && load(f); };
 drop.ondragover = e => { e.preventDefault(); drop.classList.add("hover"); };
 drop.ondragleave = () => drop.classList.remove("hover");
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove("hover"); e.dataTransfer.files[0] && load(e.dataTransfer.files[0]); };
 ["name", "hours"].forEach(id => $(id).addEventListener("input", render));
-$("month").addEventListener("input", () => { animRows = true; prevOpen = null; render(); });
+$("month").addEventListener("input", () => { animRows = true; prevOpen = null; sel.clear(); lastSel = null; render(); });
 addEventListener("resize", moveThumb);
 document.fonts && document.fonts.ready.then(moveThumb);
 $("dl").onclick = download;
+try { const h = parseFloat(localStorage.getItem("ts-hours")); if (h > 0) $("hours").value = h; } catch {}
+function markGear() { $("gear").classList.toggle("changed", (parseFloat($("hours").value) || 9) !== 9); }
+markGear();
+$("gear").onclick = e => { e.stopPropagation(); const open = !$("advPop").classList.contains("show"); $("advPop").classList.toggle("show", open); $("gear").setAttribute("aria-expanded", open); if (open) setTimeout(() => $("hours").focus(), 60); };
+document.addEventListener("click", e => { if (!e.target.closest(".adv")) { $("advPop").classList.remove("show"); $("gear").setAttribute("aria-expanded", "false"); } });
+$("hours").addEventListener("input", () => { try { localStorage.setItem("ts-hours", $("hours").value); } catch {} markGear(); });
+$("bulk").addEventListener("click", e => {
+  const btn = e.target.closest("[data-bulk]");
+  if (btn) {
+    const ov = OV[$("month").value];
+    sel.forEach(d => { ov[d] = ov[d] || {}; ov[d].status = btn.dataset.bulk; });
+    saveOV();
+  }
+  if (btn || e.target.closest("#bulkX")) { sel.clear(); lastSel = null; render(); }
+});
+addEventListener("keydown", e => { if (e.key === "Escape" && sel.size) { sel.clear(); lastSel = null; render(); } });
 $("change").onclick = () => $("file").click();
 document.querySelectorAll("#fmt button").forEach(b => b.onclick = () => setFmt(b.dataset.f));
-$("reset").onclick = () => { if (confirm(T("resetQ"))) { OV[$("month").value] = {}; saveOV(); render(); } };
+$("reset").onclick = async () => {
+  if (await ask({ title: T("resetQ"), text: T("resetD"), yes: T("resetYes"), no: T("cancel"), danger: true, icon: "↺" })) {
+    OV[$("month").value] = {}; saveOV(); sel.clear(); animRows = true; render();
+  }
+};
+$("tb").addEventListener("click", e => {
+  const ck = e.target.closest(".ck");
+  if (ck) {
+    const d = +ck.dataset.day;
+    const selectable = last.r.rows.filter(x => x.kind === "off" || x.kind === "incomplete").map(x => x.day);
+    if (e.shiftKey && lastSel !== null) {
+      const [a, b] = [Math.min(lastSel, d), Math.max(lastSel, d)];
+      selectable.filter(x => x >= a && x <= b).forEach(x => sel.add(x));
+    } else sel.has(d) ? sel.delete(d) : sel.add(d);
+    lastSel = d;
+    render();
+    return;
+  }
+  const chip = e.target.closest(".chip"); if (!chip) return;
+  const box = chip.parentElement, d = +box.dataset.day, ov = OV[$("month").value];
+  ov[d] = ov[d] || {};
+  ov[d].status = box.dataset.cur === chip.dataset.st ? "none" : chip.dataset.st;
+  saveOV();
+  flashDay = d; flashKey = "status";
+  render();
+});
+function parseTime(str) {
+  const t = str.trim().toLowerCase().replace(/\s+/g, "");
+  if (!t) return null;
+  let m = t.match(/^(\d{1,2})[:h.]?(\d{2})$/) || t.match(/^(\d{1,2})h?$/);
+  if (!m) return NaN;
+  const h = +m[1], mi = m[2] ? +m[2] : 0;
+  return h < 24 && mi < 60 ? h * 60 + mi : NaN;
+}
+$("tb").addEventListener("keydown", e => { if (e.target.classList.contains("tm") && e.key === "Enter") e.target.blur(); });
 $("tb").addEventListener("change", e => {
   const el = e.target; if (!el.dataset.day) return;
+  if (el.classList.contains("tm")) {
+    const v = parseTime(el.value);
+    if (Number.isNaN(v)) { el.classList.remove("bad"); void el.offsetWidth; el.classList.add("bad"); setTimeout(render, 650); return; }
+    const ov = OV[$("month").value], d = +el.dataset.day, k = el.dataset.k;
+    const row = last.r.rows.find(x => x.day === d), orig = k === "tin" ? row.origIn : row.origOut;
+    ov[d] = ov[d] || {};
+    if (v === null || v === orig) delete ov[d][k]; else ov[d][k] = v;
+    saveOV(); flashDay = d; flashKey = k; render();
+    return;
+  }
   const ov = OV[$("month").value], d = +el.dataset.day;
   ov[d] = ov[d] || {};
   ov[d][el.dataset.k] = el.dataset.k === "shift" ? +el.value : el.value;
