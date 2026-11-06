@@ -113,6 +113,17 @@
   .fmt button { position: relative; z-index: 1; background: transparent; border: 0; border-radius: 980px; padding: 8px 14px; font: 500 13px/1 var(--font); color: var(--ink); cursor: pointer; }
   .fmt .thumb { position: absolute; top: 3px; bottom: 3px; left: 0; border-radius: 980px; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 3px 1px rgba(0,0,0,.04); transition: transform .45s var(--spring), width .45s var(--spring); }
   .actions { display: flex; gap: 10px; align-items: center; }
+  .fmt button[data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 10px); left: 50%; width: max-content; max-width: 230px;
+    transform: translate(-50%, -4px) scale(.96); transform-origin: top center; opacity: 0; pointer-events: none;
+    background: rgba(29,29,31,.92); color: #fff; font: 400 12.5px/1.4 var(--font); letter-spacing: -.005em; text-align: left; white-space: normal;
+    padding: 8px 11px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: opacity .18s var(--ease), transform .25s var(--spring); z-index: 20; }
+  .fmt button[data-tip]::before { content: ""; position: absolute; top: calc(100% + 4px); left: 50%; border: 6px solid transparent; border-bottom-color: rgba(29,29,31,.92);
+    transform: translateX(-50%); opacity: 0; transition: opacity .18s var(--ease); pointer-events: none; z-index: 20; }
+  .fmt button[data-tip]:hover::after, .fmt button[data-tip]:focus-visible::after { opacity: 1; transform: translate(-50%, 0) scale(1); transition-delay: .25s; }
+  .fmt button[data-tip]:hover::before, .fmt button[data-tip]:focus-visible::before { opacity: 1; transition-delay: .25s; }
+  .fmt button[data-f="pdf"]::after { left: auto; right: -8px; transform: translate(0, -4px) scale(.96); transform-origin: top right; }
+  .fmt button[data-f="pdf"]:hover::after, .fmt button[data-f="pdf"]:focus-visible::after { transform: translate(0, 0) scale(1); }
 
   #print { display: none; }
   @media print {
@@ -514,6 +525,7 @@ const TPL = {"mimetype": "application/vnd.oasis.opendocument.spreadsheet", "cont
 const I18N = {
   de: {
     title: "Timesheet-Generator",
+    tip: { ods: "LibreOffice-Format wie eure Vorlage – später noch bearbeitbar.", xlsx: "Excel-Datei mit gleichem Layout – in Excel bearbeitbar.", pdf: "Fertiges Dokument zum Abgeben oder Mailen. Öffnet den Druckdialog → „Als PDF speichern“." },
     oss: "Open Source auf GitHub", pdfDone: "Druckdialog: „Als PDF speichern“ wählen", dlDone: "Heruntergeladen", change: "Andere Datei", how: "So wird gerechnet", loaded: "Monate im Export", foot: "Läuft komplett lokal im Browser – keine Daten verlassen diesen PC.",
     r1: "Die Schicht (08:00, 09:00 oder 10:00) wird aus dem Eintritt erkannt und kann pro Tag geändert werden.",
     r2: "Zeit vor Schichtbeginn zählt nicht als Overtime.",
@@ -537,6 +549,7 @@ const I18N = {
   },
   fr: {
     title: "Générateur de timesheet",
+    tip: { ods: "Format LibreOffice comme votre modèle – modifiable par la suite.", xlsx: "Fichier Excel avec la même mise en page – modifiable dans Excel.", pdf: "Document final à remettre ou envoyer. Ouvre l’impression → « Enregistrer au format PDF »." },
     oss: "Open source sur GitHub", pdfDone: "Dans l’impression : « Enregistrer au format PDF »", dlDone: "Téléchargé", change: "Autre fichier", how: "Méthode de calcul", loaded: "mois dans l’export", foot: "Fonctionne entièrement en local – aucune donnée ne quitte ce PC.",
     r1: "L’horaire (08h00, 09h00 ou 10h00) est détecté à l’entrée et peut être modifié par jour.",
     r2: "Le temps avant le début de l’horaire ne compte pas en heures sup.",
@@ -560,6 +573,7 @@ const I18N = {
   },
   en: {
     title: "Timesheet generator",
+    tip: { ods: "LibreOffice format, same as your template – editable later.", xlsx: "Excel file with the same layout – editable in Excel.", pdf: "Final document to submit or email. Opens the print dialog → “Save as PDF”." },
     oss: "Open source on GitHub", pdfDone: "In the print dialog: “Save as PDF”", dlDone: "Downloaded", change: "Other file", how: "How it is calculated", loaded: "months in export", foot: "Runs entirely in your browser – no data leaves this PC.",
     r1: "The shift (08:00, 09:00 or 10:00) is detected from badge-in and can be changed per day.",
     r2: "Time before shift start does not count as overtime.",
@@ -637,6 +651,7 @@ function applyLang() {
     el.textContent = T(el.dataset.t);
   });
   document.querySelectorAll("#lang button").forEach(b => b.classList.toggle("on", b.dataset.l === lang));
+  document.querySelectorAll("#fmt button").forEach(b => b.dataset.tip = T("tip")[b.dataset.f]);
   moveThumb();
   if (badges) { fillMonths(); render(); }
 }
