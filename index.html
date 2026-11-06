@@ -132,6 +132,16 @@
   .bulk .x { background: none; border: 0; color: rgba(255,255,255,.7); font-size: 14px; cursor: pointer; padding: 6px 8px; border-radius: 50%; }
   .bulk .x:hover { color: #fff; background: rgba(255,255,255,.12); }
   .selhint { color: var(--faint); font-size: 12px; margin-left: 8px; }
+  .tm { width: 64px; min-width: 0; font: 400 13.5px/1.2 var(--mono); letter-spacing: 0; color: inherit; background: transparent; border: 0; border-radius: 7px; padding: 5px 6px; margin-left: -6px; transition: background .2s, box-shadow .2s; }
+  .tm:hover { background: var(--fill); }
+  .tm:focus { background: #fff; box-shadow: 0 0 0 2px var(--ink); outline: none; }
+  .tm::placeholder { color: transparent; }
+  tr:hover .tm::placeholder, .tm:focus::placeholder { color: var(--faint); }
+  tr.miss .tm[placeholder="?"]::placeholder { color: #c77c00; }
+  .tm.ed { background: rgba(255,159,10,.14); color: #8a5a00; font-weight: 600; }
+  .tm.popped { animation: pop .45s var(--spring); }
+  .tm.bad { animation: shake .4s; box-shadow: 0 0 0 2px var(--neg); }
+  @keyframes shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
   span.hol { color: #c26a00; font-size: 13px; margin-left: 8px; }
   span.inc { color: #c77c00; font-size: 13px; margin-left: 8px; }
 
@@ -251,7 +261,7 @@
   </ol>
 
   <details class="rules"><summary data-t="how"></summary>
-    <ul><li data-t="r1"></li><li data-t="r2"></li><li data-t="r3"></li><li data-t="r4"></li><li data-t="r5"></li></ul>
+    <ul><li data-t="r1"></li><li data-t="r2"></li><li data-t="r3"></li><li data-t="r4"></li><li data-t="r5"></li><li data-t="r6"></li></ul>
   </details>
 
   <div id="ui" class="hidden">
@@ -406,9 +416,12 @@ function buildContent(tpl, badges, year, month, name, hours, opts = {}) {
     const dow = new Date(year, month - 1, day).getDay();
     const wd = WD[dow], weekend = dow === 0 || dow === 6;
     const holiday = hol[`${mm}-${dd}`] || null;
-    const b = badges.days[`${year}-${mm}-${dd}`] || {};
+    const raw = badges.days[`${year}-${mm}-${dd}`] || {};
     const o = ov[day] || {};
-    const r = { day, wd, s: "", e: "", ot: "", kind: "", holiday, status: "", shiftSel: o.shift || 0 };
+    // manuelle Korrektur: o.tin / o.tout (Minuten) überschreiben die Badge-Zeiten
+    const b = { in: o.tin ?? raw.in, out: o.tout ?? raw.out };
+    const r = { day, wd, s: "", e: "", ot: "", kind: "", holiday, status: "", shiftSel: o.shift || 0,
+      editIn: o.tin != null, editOut: o.tout != null, origIn: raw.in, origOut: raw.out };
     let cells = cell(wd);
     if (b.in !== undefined && b.out !== undefined) {
       const ot = overtime(b.in, b.out, soll, o.shift || 0); total += ot.min; worked++;
@@ -576,6 +589,7 @@ const TPL = {"mimetype": "application/vnd.oasis.opendocument.spreadsheet", "cont
 const I18N = {
   de: {
     title: "Timesheet-Generator",
+    edited: "Manuell geändert – Badge war", added: "Manuell eingetragen", editTip: "Klicken zum Korrigieren (z. B. 17:30)", r6: "Vergessen zu badgen? Start- oder Endzeit einfach anklicken und korrigieren (z. B. 17:30). Geänderte Zeiten sind orange markiert, leeren stellt den Badge-Wert wieder her.",
     clearSt: "Leeren", selN: n => n === 1 ? "1 Tag ausgewählt" : `${n} Tage ausgewählt`, selHint: "Tipp: Kreis anklicken, Shift-Klick wählt mehrere Tage",
     s1t: "Badge-Export holen", s1d: "Deine Pointages (Badge-Zeiten) für den Monat als CSV exportieren.",
     s2t: "Hier reinziehen", s2d: "CSV ins Feld oben ziehen. Name und Monat werden automatisch erkannt.",
@@ -604,6 +618,7 @@ const I18N = {
   },
   fr: {
     title: "Générateur de timesheet",
+    edited: "Modifié manuellement – pointage", added: "Saisi manuellement", editTip: "Cliquer pour corriger (ex. 17:30)", r6: "Oubli de pointage ? Cliquez sur l’heure de début ou de fin pour la corriger (ex. 17:30). Les heures modifiées sont en orange ; vider le champ rétablit le pointage.",
     clearSt: "Effacer", selN: n => n === 1 ? "1 jour sélectionné" : `${n} jours sélectionnés`, selHint: "Astuce : cliquez sur le cercle, Maj+clic sélectionne plusieurs jours",
     s1t: "Exporter les pointages", s1d: "Exportez vos pointages du mois au format CSV.",
     s2t: "Déposer ici", s2d: "Glissez le CSV dans la zone ci-dessus. Le nom et le mois sont détectés automatiquement.",
@@ -632,6 +647,7 @@ const I18N = {
   },
   en: {
     title: "Timesheet generator",
+    edited: "Edited manually – badge was", added: "Entered manually", editTip: "Click to correct (e.g. 17:30)", r6: "Forgot to badge? Click the start or end time to correct it (e.g. 17:30). Edited times are marked orange; clearing the field restores the badge value.",
     clearSt: "Clear", selN: n => n === 1 ? "1 day selected" : `${n} days selected`, selHint: "Tip: click the circle, Shift-click selects several days",
     s1t: "Get the badge export", s1d: "Export your Pointages (badge times) for the month as CSV.",
     s2t: "Drop it here", s2d: "Drag the CSV into the area above. Name and month are detected automatically.",
@@ -777,6 +793,12 @@ function render() {
     [480, 540, 600].map(v => `<option value="${v}"${x.shiftSel === v ? " selected" : ""}>${hm(v)}–${hm(v + Math.round((parseFloat($("hours").value) || 9) * 60))}</option>`).join("") + "</select>";
   const statusSel = x => `<div class="chips" data-day="${x.day}" data-cur="${x.status}">` +
     ["CONGE", "recup", "MALADIE", "FERIE"].map(v => `<button type="button" class="chip ${v}${x.status === v ? " on" : ""}" data-st="${v}">${T("st")[v]}</button>`).join("") + "</div>";
+  const tm = (x, k) => {
+    const v = k === "tin" ? x.s : x.e, ed = k === "tin" ? x.editIn : x.editOut, orig = k === "tin" ? x.origIn : x.origOut;
+    const val = v && v !== "?" ? v : "";
+    const tip = ed ? (orig != null ? `${T("edited")}: ${hm(orig)}` : T("added")) : T("editTip");
+    return `<input class="tm${ed ? " ed" : ""}" data-day="${x.day}" data-k="${k}" value="${val}" placeholder="${v === "?" ? "?" : "+"}" title="${tip}" spellcheck="false" autocomplete="off">`;
+  };
   $("tb").innerHTML = r.rows.map((x, i) => {
     const missing = r.missing.includes(x);
     const selectable = x.kind === "off" || x.kind === "incomplete";
@@ -787,13 +809,13 @@ function render() {
     else if (x.kind === "off" || x.kind === "incomplete") {
       stTd = statusSel(x) + (hol ? " " + hol : "") + (x.kind === "incomplete" && x.status === "none" ? `<span class="inc">${T("incomplete")}</span>` : "");
     } else stTd = hol;
-    return `<tr class="${cls}${flashDay === x.day ? " flash" : ""}" style="--i:${i}"><td>${selectable ? `<button type="button" class="ck" data-day="${x.day}" aria-label="select"></button>` : ""}${x.day}</td><td class="wd">${wd(x.wd)}</td><td>${shiftTd}</td><td class="t">${x.s}</td><td class="t">${x.e}</td><td class="t ${x.ot.startsWith("-") ? "ot-neg" : x.ot && x.ot !== "00h00" && x.ot !== "?" ? "ot-pos" : ""}">${x.ot}</td><td>${stTd}</td></tr>`;
+    return `<tr class="${cls}${flashDay === x.day ? " flash" : ""}" style="--i:${i}"><td>${selectable ? `<button type="button" class="ck" data-day="${x.day}" aria-label="select"></button>` : ""}${x.day}</td><td class="wd">${wd(x.wd)}</td><td>${shiftTd}</td><td class="t">${tm(x, "tin")}</td><td class="t">${tm(x, "tout")}</td><td class="t ${x.ot.startsWith("-") ? "ot-neg" : x.ot && x.ot !== "00h00" && x.ot !== "?" ? "ot-pos" : ""}">${x.ot}</td><td>${stTd}</td></tr>`;
   }).join("");
   const tb = $("tb");
   tb.classList.remove("anim");
   if (animRows && !reduce) { void tb.offsetWidth; tb.classList.add("anim"); }
   if (flashDay) {
-    const el = flashKey === "status" ? tb.querySelector(`.chips[data-day="${flashDay}"] .chip.on`) : tb.querySelector(`select[data-day="${flashDay}"][data-k="${flashKey}"]`);
+    const el = flashKey === "status" ? tb.querySelector(`.chips[data-day="${flashDay}"] .chip.on`) : tb.querySelector(`[data-day="${flashDay}"][data-k="${flashKey}"]`);
     el && el.classList.add("popped");
   }
   animRows = false; flashDay = null;
@@ -895,8 +917,27 @@ $("tb").addEventListener("click", e => {
   flashDay = d; flashKey = "status";
   render();
 });
+function parseTime(str) {
+  const t = str.trim().toLowerCase().replace(/\s+/g, "");
+  if (!t) return null;
+  let m = t.match(/^(\d{1,2})[:h.]?(\d{2})$/) || t.match(/^(\d{1,2})h?$/);
+  if (!m) return NaN;
+  const h = +m[1], mi = m[2] ? +m[2] : 0;
+  return h < 24 && mi < 60 ? h * 60 + mi : NaN;
+}
+$("tb").addEventListener("keydown", e => { if (e.target.classList.contains("tm") && e.key === "Enter") e.target.blur(); });
 $("tb").addEventListener("change", e => {
   const el = e.target; if (!el.dataset.day) return;
+  if (el.classList.contains("tm")) {
+    const v = parseTime(el.value);
+    if (Number.isNaN(v)) { el.classList.remove("bad"); void el.offsetWidth; el.classList.add("bad"); setTimeout(render, 650); return; }
+    const ov = OV[$("month").value], d = +el.dataset.day, k = el.dataset.k;
+    const row = last.r.rows.find(x => x.day === d), orig = k === "tin" ? row.origIn : row.origOut;
+    ov[d] = ov[d] || {};
+    if (v === null || v === orig) delete ov[d][k]; else ov[d][k] = v;
+    saveOV(); flashDay = d; flashKey = k; render();
+    return;
+  }
   const ov = OV[$("month").value], d = +el.dataset.day;
   ov[d] = ov[d] || {};
   ov[d][el.dataset.k] = el.dataset.k === "shift" ? +el.value : el.value;
