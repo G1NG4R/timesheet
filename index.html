@@ -105,6 +105,16 @@
   select.st-MALADIE { background-color: #ffff00; font-weight: 600; }
   select.st-FERIE { background-color: #ffb66c; font-weight: 600; }
   select.st-recup { background-color: #6fa8dc; color: #fff; font-weight: 600; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E"); }
+  .chips { display: inline-flex; gap: 4px; flex-wrap: wrap; vertical-align: middle; }
+  .chip { font: 600 12px/1 var(--font); padding: 6px 10px; border-radius: 980px; border: 0; background: var(--fill); color: var(--mute); cursor: pointer; transition: background .2s var(--ease), color .2s, transform .3s var(--spring); }
+  .chip:hover { background: rgba(118,118,128,.2); color: var(--ink); }
+  .chip:active { transform: scale(.94); }
+  .chip.on.CONGE { background: #00a933; color: #fff; }
+  .chip.on.recup { background: #6fa8dc; color: #fff; }
+  .chip.on.MALADIE { background: #ffff00; color: #1d1d1f; }
+  .chip.on.FERIE { background: #ffb66c; color: #1d1d1f; }
+  .chip.popped { animation: pop .45s var(--spring); }
+  tr.miss .chip:not(.on) { background: rgba(255,159,10,.14); color: #8a5a00; }
   span.hol { color: #c26a00; font-size: 13px; margin-left: 8px; }
   span.inc { color: #c77c00; font-size: 13px; margin-left: 8px; }
 
@@ -732,8 +742,8 @@ function render() {
   const shiftSel = x => `<select data-day="${x.day}" data-k="shift" class="${x.shiftSel ? "set" : ""}">` +
     `<option value="0">${T("auto")} (${hm(x.shiftAuto)})</option>` +
     [480, 540, 600].map(v => `<option value="${v}"${x.shiftSel === v ? " selected" : ""}>${hm(v)}–${hm(v + Math.round((parseFloat($("hours").value) || 9) * 60))}</option>`).join("") + "</select>";
-  const statusSel = x => `<select data-day="${x.day}" data-k="status" class="st-${x.status}${x.status !== x.autoStatus ? " set" : ""}">` +
-    ["none", "CONGE", "recup", "MALADIE", "FERIE"].map(v => `<option value="${v}"${x.status === v ? " selected" : ""}>${v === "none" ? T("none") : T("st")[v]}</option>`).join("") + "</select>";
+  const statusSel = x => `<div class="chips" data-day="${x.day}" data-cur="${x.status}">` +
+    ["CONGE", "recup", "MALADIE", "FERIE"].map(v => `<button type="button" class="chip ${v}${x.status === v ? " on" : ""}" data-st="${v}">${T("st")[v]}</button>`).join("") + "</div>";
   $("tb").innerHTML = r.rows.map((x, i) => {
     const missing = r.missing.includes(x);
     const cls = x.kind === "we" ? "we" : missing ? "miss" : x.holiday ? "hol" : "";
@@ -748,7 +758,10 @@ function render() {
   const tb = $("tb");
   tb.classList.remove("anim");
   if (animRows && !reduce) { void tb.offsetWidth; tb.classList.add("anim"); }
-  if (flashDay) { const sel = tb.querySelector(`select[data-day="${flashDay}"][data-k="${flashKey}"]`); sel && sel.classList.add("popped"); }
+  if (flashDay) {
+    const el = flashKey === "status" ? tb.querySelector(`.chips[data-day="${flashDay}"] .chip.on`) : tb.querySelector(`select[data-day="${flashDay}"][data-k="${flashKey}"]`);
+    el && el.classList.add("popped");
+  }
   animRows = false; flashDay = null;
 }
 let flashKey = null;
@@ -810,6 +823,15 @@ $("dl").onclick = download;
 $("change").onclick = () => $("file").click();
 document.querySelectorAll("#fmt button").forEach(b => b.onclick = () => setFmt(b.dataset.f));
 $("reset").onclick = () => { if (confirm(T("resetQ"))) { OV[$("month").value] = {}; saveOV(); render(); } };
+$("tb").addEventListener("click", e => {
+  const chip = e.target.closest(".chip"); if (!chip) return;
+  const box = chip.parentElement, d = +box.dataset.day, ov = OV[$("month").value];
+  ov[d] = ov[d] || {};
+  ov[d].status = box.dataset.cur === chip.dataset.st ? "none" : chip.dataset.st;
+  saveOV();
+  flashDay = d; flashKey = "status";
+  render();
+});
 $("tb").addEventListener("change", e => {
   const el = e.target; if (!el.dataset.day) return;
   const ov = OV[$("month").value], d = +el.dataset.day;
