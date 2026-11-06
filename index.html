@@ -138,6 +138,11 @@
   .tm::placeholder { color: transparent; }
   tr:hover .tm::placeholder, .tm:focus::placeholder { color: var(--faint); }
   tr.miss .tm[placeholder="?"]::placeholder { color: #c77c00; }
+  tr.miss .tm::placeholder { color: rgba(199,124,0,.55); }
+  .tm.want { background: #fff; box-shadow: 0 0 0 2px var(--warn); }
+  .chip.time { display: inline-flex; align-items: center; gap: 4px; background: transparent !important; color: var(--mute) !important; box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); }
+  .chip.time:hover { color: var(--ink) !important; box-shadow: inset 0 0 0 1px var(--ink); }
+  .chip.time svg { width: 12px; height: 12px; }
   .tm.ed { background: rgba(255,159,10,.14); color: #8a5a00; font-weight: 600; }
   .tm.popped { animation: pop .45s var(--spring); }
   .tm.bad { animation: shake .4s; box-shadow: 0 0 0 2px var(--neg); }
@@ -644,11 +649,12 @@ const I18N = {
     resetD: "Alle Status, Schichten und korrigierten Zeiten dieses Monats werden entfernt.", resetYes: "Zurücksetzen", cancel: "Abbrechen",
     adv: "Erweitert", shiftHint: "Standard: 9 h = 8 h Arbeit + 1 h Pause. Nur ändern, wenn deine Schicht anders ist.",
     warnT: n => n === 1 ? "Noch 1 offener Tag" : `Noch ${n} offene Tage`, warnD: "Diese Tage haben weder Badge noch Status. Trotzdem herunterladen?", warnYes: "Trotzdem herunterladen", warnNo: "Zu den offenen Tagen",
+    enterTime: "Zeit eintragen",
     edited: "Manuell geändert – Badge war", added: "Manuell eingetragen", editTip: "Klicken zum Korrigieren (z. B. 17:30)", r6: "Vergessen zu badgen? Start- oder Endzeit einfach anklicken und korrigieren (z. B. 17:30). Geänderte Zeiten sind orange markiert, leeren stellt den Badge-Wert wieder her.",
     clearSt: "Leeren", selN: n => n === 1 ? "1 Tag ausgewählt" : `${n} Tage ausgewählt`, selHint: "Tipp: Kreis anklicken, Shift-Klick wählt mehrere Tage",
     s1t: "Badge-Export holen", s1d: "Deine Pointages (Badge-Zeiten) für den Monat als CSV exportieren.",
     s2t: "Hier reinziehen", s2d: "CSV ins Feld oben ziehen. Name und Monat werden automatisch erkannt.",
-    s3t: "Prüfen & herunterladen", s3d: "Gelb markierte Tage ausfüllen (CONGE, recup …), Format wählen – fertig.",
+    s3t: "Prüfen & herunterladen", s3d: "Gelb markierte Tage ausfüllen (CONGE, recup … oder vergessene Zeiten eintragen), Format wählen – fertig.",
     tip: { ods: "LibreOffice-Format wie eure Vorlage – später noch bearbeitbar.", xlsx: "Excel-Datei mit gleichem Layout – in Excel bearbeitbar.", pdf: "Fertiges Dokument zum Abgeben oder Mailen. Öffnet den Druckdialog → „Als PDF speichern“." },
     oss: "Open Source auf GitHub", pdfDone: "Druckdialog: „Als PDF speichern“ wählen", dlDone: "Heruntergeladen", change: "Andere Datei", how: "So wird gerechnet", loaded: "Monate im Export", foot: "Läuft komplett lokal im Browser – keine Daten verlassen diesen PC.",
     r1: "Die Schicht (08:00, 09:00 oder 10:00) wird aus dem Eintritt erkannt und kann pro Tag geändert werden.",
@@ -679,11 +685,12 @@ const I18N = {
     resetD: "Tous les statuts, horaires et heures corrigées de ce mois seront supprimés.", resetYes: "Réinitialiser", cancel: "Annuler",
     adv: "Avancé", shiftHint: "Par défaut : 9 h = 8 h de travail + 1 h de pause. À modifier seulement si votre horaire est différent.",
     warnT: n => n === 1 ? "Encore 1 jour à compléter" : `Encore ${n} jours à compléter`, warnD: "Ces jours n’ont ni pointage ni statut. Télécharger quand même ?", warnYes: "Télécharger quand même", warnNo: "Voir les jours",
+    enterTime: "Saisir l’heure",
     edited: "Modifié manuellement – pointage", added: "Saisi manuellement", editTip: "Cliquer pour corriger (ex. 17:30)", r6: "Oubli de pointage ? Cliquez sur l’heure de début ou de fin pour la corriger (ex. 17:30). Les heures modifiées sont en orange ; vider le champ rétablit le pointage.",
     clearSt: "Effacer", selN: n => n === 1 ? "1 jour sélectionné" : `${n} jours sélectionnés`, selHint: "Astuce : cliquez sur le cercle, Maj+clic sélectionne plusieurs jours",
     s1t: "Exporter les pointages", s1d: "Exportez vos pointages du mois au format CSV.",
     s2t: "Déposer ici", s2d: "Glissez le CSV dans la zone ci-dessus. Le nom et le mois sont détectés automatiquement.",
-    s3t: "Vérifier et télécharger", s3d: "Complétez les jours en jaune (CONGE, récup …), choisissez le format – terminé.",
+    s3t: "Vérifier et télécharger", s3d: "Complétez les jours en jaune (CONGE, récup … ou heures oubliées), choisissez le format – terminé.",
     tip: { ods: "Format LibreOffice comme votre modèle – modifiable par la suite.", xlsx: "Fichier Excel avec la même mise en page – modifiable dans Excel.", pdf: "Document final à remettre ou envoyer. Ouvre l’impression → « Enregistrer au format PDF »." },
     oss: "Open source sur GitHub", pdfDone: "Dans l’impression : « Enregistrer au format PDF »", dlDone: "Téléchargé", change: "Autre fichier", how: "Méthode de calcul", loaded: "mois dans l’export", foot: "Fonctionne entièrement en local – aucune donnée ne quitte ce PC.",
     r1: "L’horaire (08h00, 09h00 ou 10h00) est détecté à l’entrée et peut être modifié par jour.",
@@ -714,11 +721,12 @@ const I18N = {
     resetD: "All statuses, shifts and corrected times for this month will be removed.", resetYes: "Reset", cancel: "Cancel",
     adv: "Advanced", shiftHint: "Default: 9 h = 8 h work + 1 h break. Only change this if your shift is different.",
     warnT: n => n === 1 ? "1 day still open" : `${n} days still open`, warnD: "These days have neither a badge nor a status. Download anyway?", warnYes: "Download anyway", warnNo: "Show open days",
+    enterTime: "Enter time",
     edited: "Edited manually – badge was", added: "Entered manually", editTip: "Click to correct (e.g. 17:30)", r6: "Forgot to badge? Click the start or end time to correct it (e.g. 17:30). Edited times are marked orange; clearing the field restores the badge value.",
     clearSt: "Clear", selN: n => n === 1 ? "1 day selected" : `${n} days selected`, selHint: "Tip: click the circle, Shift-click selects several days",
     s1t: "Get the badge export", s1d: "Export your Pointages (badge times) for the month as CSV.",
     s2t: "Drop it here", s2d: "Drag the CSV into the area above. Name and month are detected automatically.",
-    s3t: "Check & download", s3d: "Fill in the yellow days (CONGE, recup …), pick a format – done.",
+    s3t: "Check & download", s3d: "Fill in the yellow days (CONGE, recup … or forgotten times), pick a format – done.",
     tip: { ods: "LibreOffice format, same as your template – editable later.", xlsx: "Excel file with the same layout – editable in Excel.", pdf: "Final document to submit or email. Opens the print dialog → “Save as PDF”." },
     oss: "Open source on GitHub", pdfDone: "In the print dialog: “Save as PDF”", dlDone: "Downloaded", change: "Other file", how: "How it is calculated", loaded: "months in export", foot: "Runs entirely in your browser – no data leaves this PC.",
     r1: "The shift (08:00, 09:00 or 10:00) is detected from badge-in and can be changed per day.",
@@ -871,12 +879,13 @@ function render() {
     `<option value="0">${T("auto")} (${hm(x.shiftAuto)})</option>` +
     [480, 540, 600].map(v => `<option value="${v}"${x.shiftSel === v ? " selected" : ""}>${hm(v)}–${hm(v + Math.round((parseFloat($("hours").value) || 9) * 60))}</option>`).join("") + "</select>";
   const statusSel = x => `<div class="chips" data-day="${x.day}" data-cur="${x.status}">` +
-    ["CONGE", "recup", "MALADIE", "FERIE"].map(v => `<button type="button" class="chip ${v}${x.status === v ? " on" : ""}" data-st="${v}">${T("st")[v]}</button>`).join("") + "</div>";
+    ["CONGE", "recup", "MALADIE", "FERIE"].map(v => `<button type="button" class="chip ${v}${x.status === v ? " on" : ""}" data-st="${v}">${T("st")[v]}</button>`).join("") +
+    `<button type="button" class="chip time" data-time="${x.day}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>${T("enterTime")}</button></div>`;
   const tm = (x, k) => {
     const v = k === "tin" ? x.s : x.e, ed = k === "tin" ? x.editIn : x.editOut, orig = k === "tin" ? x.origIn : x.origOut;
     const val = v && v !== "?" ? v : "";
     const tip = ed ? (orig != null ? `${T("edited")}: ${hm(orig)}` : T("added")) : T("editTip");
-    return `<input class="tm${ed ? " ed" : ""}" data-day="${x.day}" data-k="${k}" value="${val}" placeholder="${v === "?" ? "?" : "+"}" title="${tip}" spellcheck="false" autocomplete="off">`;
+    return `<input class="tm${ed ? " ed" : ""}" data-day="${x.day}" data-k="${k}" value="${val}" placeholder="${v === "?" ? "?" : "--:--"}" title="${tip}" spellcheck="false" autocomplete="off">`;
   };
   $("tb").innerHTML = r.rows.map((x, i) => {
     const missing = r.missing.includes(x);
@@ -886,7 +895,7 @@ function render() {
     let shiftTd = "", stTd = "";
     if (x.kind === "work") { shiftTd = shiftSel(x); stTd = hol; }
     else if (x.kind === "off" || x.kind === "incomplete") {
-      stTd = statusSel(x) + (hol ? " " + hol : "") + (x.kind === "incomplete" && x.status === "none" ? `<span class="inc">${T("incomplete")}</span>` : "");
+      stTd = statusSel(x) + (hol ? " " + hol : "") + (x.kind === "incomplete" && x.status === "none" && !x.editIn && !x.editOut ? `<span class="inc">${T("incomplete")}</span>` : "");
     } else stTd = hol;
     return `<tr class="${cls}${flashDay === x.day ? " flash" : ""}" style="--i:${i}"><td>${selectable ? `<button type="button" class="ck" data-day="${x.day}" aria-label="select"></button>` : ""}${x.day}</td><td class="wd">${wd(x.wd)}</td><td>${shiftTd}</td><td class="t">${tm(x, "tin")}</td><td class="t">${tm(x, "tout")}</td><td class="t ${x.ot.startsWith("-") ? "ot-neg" : x.ot && x.ot !== "00h00" && x.ot !== "?" ? "ot-pos" : ""}">${x.ot}</td><td>${stTd}</td></tr>`;
   }).join("");
@@ -1021,6 +1030,14 @@ $("tb").addEventListener("click", e => {
     render();
     return;
   }
+  const tbtn = e.target.closest("[data-time]");
+  if (tbtn) {
+    const d = tbtn.dataset.time, ov = OV[$("month").value];
+    if (ov[d] && ov[d].status && ov[d].status !== "none") { ov[d].status = "none"; saveOV(); render(); }
+    const inp = $("tb").querySelector(`.tm[data-day="${d}"][data-k="${$("tb").querySelector(`.tm[data-day="${d}"][data-k="tin"]`).value ? "tout" : "tin"}"]`);
+    inp.classList.add("want"); inp.focus();
+    return;
+  }
   const chip = e.target.closest(".chip"); if (!chip) return;
   const box = chip.parentElement, d = +box.dataset.day, ov = OV[$("month").value];
   ov[d] = ov[d] || {};
@@ -1048,6 +1065,9 @@ $("tb").addEventListener("change", e => {
     ov[d] = ov[d] || {};
     if (v === null || v === orig) delete ov[d][k]; else ov[d][k] = v;
     saveOV(); flashDay = d; flashKey = k; render();
+    // nach der Startzeit direkt ins Ende-Feld springen, wenn das noch leer ist
+    const nxt = $("tb").querySelector(`.tm[data-day="${d}"][data-k="tout"]`);
+    if (k === "tin" && v !== null && nxt && !nxt.value) { nxt.classList.add("want"); nxt.focus(); }
     return;
   }
   const ov = OV[$("month").value], d = +el.dataset.day;
