@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timesheet</title>
+<style>
+  :root {
+    --ink: #1d1d1f; --mute: #6e6e73; --faint: #a1a1a6; --line: rgba(0,0,0,.08); --bg: #f5f5f7; --card: #fff;
+    --fill: rgba(118,118,128,.12); --ok: #34c759; --warn: #ff9f0a; --neg: #ff3b30;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    --mono: "SF Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font: 15px/1.47 var(--font); color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; letter-spacing: -.01em; }
+
+  .top .in { max-width: 980px; margin: 0 auto; padding: 56px 24px 28px; display: flex; justify-content: space-between; align-items: end; gap: 20px; }
+  h1 { font: 700 44px/1.05 var(--display); letter-spacing: -.035em; margin: 0 0 10px; }
+  .top p { margin: 0; color: var(--mute); font-size: 17px; max-width: 560px; letter-spacing: -.015em; }
+
+  /* Segmented control */
+  .lang { display: inline-flex; background: var(--fill); border-radius: 9px; padding: 2px; flex-shrink: 0; }
+  .lang button { background: transparent; color: var(--ink); border: 0; border-radius: 7px; padding: 5px 14px; font: 500 13px/1.2 var(--font); cursor: pointer; }
+  .lang button.on { background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 3px 1px rgba(0,0,0,.04); }
+
+  main { max-width: 980px; margin: 0 auto 72px; padding: 0 24px; }
+  .card { background: var(--card); border-radius: 18px; box-shadow: 0 1px 1px rgba(0,0,0,.02), 0 4px 16px rgba(0,0,0,.04); }
+
+  /* Upload */
+  #drop { padding: 44px 24px; text-align: center; cursor: pointer; background: var(--card); border-radius: 18px; border: 1.5px dashed rgba(0,0,0,.16); transition: .2s; }
+  #drop:hover, #drop.hover { border-color: var(--ink); transform: scale(1.005); }
+  #drop svg { width: 34px; height: 34px; color: var(--ink); margin-bottom: 10px; }
+  #drop b { display: block; font: 600 19px/1.3 var(--display); letter-spacing: -.02em; }
+  #drop span { color: var(--mute); }
+  .file { display: flex; align-items: center; gap: 14px; padding: 14px 18px; }
+  .file .ic { width: 38px; height: 38px; border-radius: 10px; background: var(--bg); color: var(--ink); display: grid; place-items: center; flex-shrink: 0; }
+  .file .ic svg { width: 19px; height: 19px; }
+  .file .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file .who { color: var(--mute); font-size: 13px; }
+  .file .grow { flex: 1; min-width: 0; }
+
+  details.rules { margin: 16px 4px 0; color: var(--mute); font-size: 13.5px; }
+  details.rules summary { cursor: pointer; color: var(--ink); font-weight: 500; list-style: none; display: inline-flex; gap: 6px; align-items: center; }
+  details.rules summary::-webkit-details-marker { display: none; }
+  details.rules summary::after { content: "›"; font-size: 17px; line-height: 1; transition: transform .2s; display: inline-block; }
+  details.rules[open] summary::after { transform: rotate(90deg); }
+  details.rules ul { margin: 10px 0 0; padding-left: 18px; }
+  details.rules li { margin: 3px 0; }
+
+  /* Milchglas-Leiste */
+  .controls { position: sticky; top: 12px; z-index: 5; margin-top: 20px; padding: 14px 16px; display: flex; gap: 14px; flex-wrap: wrap; align-items: end;
+    background: rgba(255,255,255,.72); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border: 1px solid rgba(255,255,255,.6); }
+  label { display: flex; flex-direction: column; font-size: 12px; font-weight: 500; color: var(--mute); gap: 6px; }
+  input, select { font: 400 15px/1.2 var(--font); color: var(--ink); padding: 9px 12px; border: 0; border-radius: 10px; background: var(--fill); min-width: 140px; letter-spacing: -.01em; appearance: none; -webkit-appearance: none; }
+  select { padding-right: 30px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236e6e73' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 11px center; }
+  input:focus, select:focus { outline: 3px solid rgba(0,0,0,.12); outline-offset: 0; }
+  .spacer { flex: 1; }
+  .btn { font: 500 15px/1 var(--font); padding: 12px 20px; border: 0; border-radius: 980px; background: var(--ink); color: #fff; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; transition: .15s; }
+  .btn:hover { background: #000; transform: translateY(-1px); }
+  .btn svg { width: 16px; height: 16px; }
+  .link { background: none; border: 0; color: var(--mute); padding: 0; font: 500 13px/1 var(--font); cursor: pointer; }
+  .link:hover { color: var(--ink); }
+
+  /* Kennzahlen */
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 20px 0; }
+  .tile { padding: 20px 22px; }
+  .tile .n { font: 600 40px/1 var(--display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+  .tile .l { font-size: 13px; color: var(--mute); margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+  .tile.open .l::before, .tile.done .l::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+  .tile.done .l::before { background: var(--ok); }
+  .tile.done .n { color: var(--ok); }
+
+  .sum { color: var(--mute); font-size: 13.5px; margin: -4px 4px 18px; }
+  .sum:empty { display: none; }
+
+  /* Tabelle */
+  .tablecard { overflow: hidden; }
+  .bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 18px 20px 12px; font-size: 13px; color: var(--mute); }
+  .bar .ttl { font: 600 20px/1.2 var(--display); letter-spacing: -.025em; color: var(--ink); margin-right: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th { text-align: left; font-size: 12px; color: var(--faint); font-weight: 500; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+  td { padding: 8px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; height: 46px; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font: 600 14px var(--display); width: 48px; padding-left: 20px; font-variant-numeric: tabular-nums; }
+  td.wd { color: var(--mute); width: 48px; }
+  td.t { font-family: var(--mono); font-size: 13.5px; letter-spacing: 0; }
+  td.ot-pos { color: var(--ok); font-weight: 600; }
+  td.ot-neg { color: var(--neg); font-weight: 600; }
+  tr.we td { color: var(--faint); background: #fbfbfd; }
+  tr.miss td:first-child { position: relative; }
+  tr.miss td:first-child::before { content: ""; position: absolute; left: 8px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--warn); }
+  tr.hol td { background: #fffaf3; }
+  td select { font-size: 13px; padding: 5px 26px 5px 10px; min-width: 0; border-radius: 8px; background-position: right 9px center; }
+  td select.set { font-weight: 600; }
+  select.st-CONGE { background-color: #00a933; color: #fff; font-weight: 600; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E"); }
+  select.st-MALADIE { background-color: #ffff00; font-weight: 600; }
+  select.st-FERIE { background-color: #ffb66c; font-weight: 600; }
+  select.st-recup { background-color: #6fa8dc; color: #fff; font-weight: 600; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E"); }
+  span.hol { color: #c26a00; font-size: 13px; margin-left: 8px; }
+  span.inc { color: #c77c00; font-size: 13px; margin-left: 8px; }
+
+  footer { text-align: center; color: var(--faint); font-size: 12px; margin-top: 24px; }
+  .fmt { display: inline-flex; background: var(--fill); border-radius: 980px; padding: 3px; position: relative; }
+  .fmt button { position: relative; z-index: 1; background: transparent; border: 0; border-radius: 980px; padding: 8px 14px; font: 500 13px/1 var(--font); color: var(--ink); cursor: pointer; }
+  .fmt .thumb { position: absolute; top: 3px; bottom: 3px; left: 0; border-radius: 980px; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 3px 1px rgba(0,0,0,.04); transition: transform .45s var(--spring), width .45s var(--spring); }
+  .actions { display: flex; gap: 10px; align-items: center; }
+
+  #print { display: none; }
+  @media print {
+    @page { size: A4 portrait; margin: 16mm 16mm; }
+    body { background: #fff; }
+    body > *:not(#print) { display: none !important; }
+    #print { display: block; font: 10.5pt/1.3 Arial, Helvetica, sans-serif; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #print .hd { display: flex; justify-content: space-between; align-items: end; margin-bottom: 14px; }
+    #print h2 { font-size: 18pt; margin: 0; letter-spacing: -.01em; }
+    #print .meta { text-align: right; }
+    #print .meta b { display: inline-block; min-width: 60px; text-align: left; }
+    #print table { border-collapse: collapse; width: auto; font-size: 10.5pt; }
+    #print th, #print td { border: .6pt solid #000; padding: 2.2pt 8pt; height: auto; text-align: center; background: #ccc; font-weight: normal; color: #000; font-family: Arial, sans-serif; }
+    #print th { text-transform: none; letter-spacing: 0; }
+    #print td.d { text-align: right; width: 26pt; } #print td.w { text-align: left; width: 34pt; }
+    #print td.v { width: 72pt; }
+    #print td.we { background: #999; }
+    #print td.CONGE { background: #00a933; color: #fff; } #print td.MALADIE { background: #ffff00; }
+    #print td.recup { background: #6fa8dc; color: #fff; } #print td.FERIE { background: #ffb66c; }
+    #print td.n { border: 0; background: none; text-align: left; font-size: 9pt; padding-left: 6pt; }
+    #print tr.tot td { font-weight: bold; }
+    #print tr.gap td { border: 0; background: none; height: 8pt; }
+    #print .foot { margin-top: 18px; font-size: 8.5pt; color: #555; }
+  }
+  /* ---------- Motion ---------- */
+  :root { --ease: cubic-bezier(.2,.8,.2,1); --spring: cubic-bezier(.34,1.56,.64,1); }
+  @keyframes rise { from { opacity: 0; transform: translateY(16px) scale(.985); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+  @keyframes rowIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes flash { 0% { background: rgba(0,0,0,.06); } 100% { background: transparent; } }
+  @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+  @keyframes ring { from { box-shadow: 0 0 0 0 rgba(52,199,89,.45); } to { box-shadow: 0 0 0 14px rgba(52,199,89,0); } }
+  @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  @keyframes drift { 0% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,20px) scale(1.08); } 100% { transform: translate(0,0) scale(1); } }
+  .enter { animation: rise .8s var(--ease) both; animation-delay: var(--d, 0ms); }
+  .top h1, .top p, .lang, #drop, details.rules { animation: rise .9s var(--ease) both; }
+  .top p { animation-delay: 80ms; } .lang { animation-delay: 160ms; } #drop { animation-delay: 220ms; } details.rules { animation-delay: 300ms; }
+  #drop svg { animation: floaty 3.2s ease-in-out infinite; }
+  #drop { transition: transform .35s var(--spring), border-color .2s, box-shadow .35s var(--ease), background .2s; }
+  #drop.hover { transform: scale(1.015); box-shadow: 0 20px 50px rgba(0,0,0,.10); background: #fff; }
+  tbody.anim tr { animation: rowIn .5s var(--ease) both; animation-delay: calc(var(--i) * 14ms + 120ms); }
+  tr.flash td { animation: flash 1.1s var(--ease); }
+  td select { transition: background-color .25s var(--ease), color .25s, transform .3s var(--spring); }
+  td select.popped { animation: pop .45s var(--spring); }
+  .card { transition: transform .4s var(--ease), box-shadow .4s var(--ease); }
+  .tile:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(0,0,0,.03), 0 14px 34px rgba(0,0,0,.08); }
+  .tile .n { display: inline-block; }
+  .tile.celebrate { animation: ring 1s var(--ease); }
+  .tile.celebrate .n { animation: pop .6s var(--spring); }
+  .btn { transition: transform .25s var(--spring), background .2s, padding .3s var(--ease); }
+  .btn:active { transform: scale(.96); }
+  .btn.ok { background: var(--ok); }
+  .lang { position: relative; }
+  .lang .thumb { position: absolute; top: 2px; bottom: 2px; left: 0; border-radius: 7px; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 3px 1px rgba(0,0,0,.04); transition: transform .45s var(--spring), width .45s var(--spring); }
+  .lang button { position: relative; z-index: 1; transition: color .2s; }
+  .lang button.on { background: transparent; box-shadow: none; }
+  .glow { position: fixed; inset: -20% -10% auto auto; width: 620px; height: 620px; border-radius: 50%; pointer-events: none; z-index: -1;
+    background: radial-gradient(closest-side, rgba(0,169,51,.10), rgba(111,168,220,.10) 45%, rgba(255,182,108,.07) 70%, transparent);
+    filter: blur(40px); animation: drift 18s ease-in-out infinite; }
+  .fade-swap { animation: rise .45s var(--ease) both; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+  .hidden { display: none !important; }
+  @media (max-width: 680px) { .tiles { grid-template-columns: 1fr; } .top .in { flex-direction: column; align-items: start; } h1 { font-size: 34px; } }
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<div class="top"><div class="in">
+  <div>
+    <h1 data-t="title"></h1>
+    <p data-t="sub"></p>
+  </div>
+  <div class="lang" id="lang"><span class="thumb"></span><button data-l="de">DE</button><button data-l="fr">FR</button><button data-l="en">EN</button></div>
+</div></div>
+
+<main>
+  <div id="drop">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+    <b data-t="drop"></b><span data-t="click"></span>
+  </div>
+  <div class="card file hidden" id="fileCard">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></div>
+    <div class="grow"><div class="nm" id="fileName"></div><div class="who" id="fileWho"></div></div>
+    <button class="link" id="change" data-t="change"></button>
+  </div>
+  <input type="file" id="file" accept=".csv" class="hidden">
+
+  <details class="rules"><summary data-t="how"></summary>
+    <ul><li data-t="r1"></li><li data-t="r2"></li><li data-t="r3"></li><li data-t="r4"></li><li data-t="r5"></li></ul>
+  </details>
+
+  <div id="ui" class="hidden">
+    <div class="card controls">
+      <label><span data-t="month"></span><select id="month"></select></label>
+      <label><span data-t="name"></span><input id="name" style="width:190px;min-width:0"></label>
+      <label><span data-t="shiftLen"></span><input id="hours" type="number" step="0.25" value="9" style="min-width:90px;width:90px"></label>
+      <div class="spacer"></div>
+      <div class="actions">
+      <div class="fmt" id="fmt"><span class="thumb"></span><button data-f="ods">ODS</button><button data-f="xlsx">XLSX</button><button data-f="pdf">PDF</button></div>
+      <button class="btn" id="dl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0-4-4m4 4 4-4"/><path d="M4 18v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1"/></svg><span data-t="download"></span></button>
+      </div>
+    </div>
+
+    <div class="tiles">
+      <div class="card tile"><div class="n" id="tDays"></div><div class="l" data-t="tDays"></div></div>
+      <div class="card tile"><div class="n" id="tOt"></div><div class="l" data-t="tOt"></div></div>
+      <div class="card tile" id="tOpenBox"><div class="n" id="tOpen"></div><div class="l" id="tOpenL"></div></div>
+    </div>
+    <div class="sum" id="sum"></div>
+
+    <div class="card tablecard">
+      <div class="bar"><span><span class="ttl" id="tblTitle"></span> &nbsp;<span id="saved"></span></span><button class="link" id="reset" data-t="reset"></button></div>
+      <table><thead><tr><th data-t="day"></th><th></th><th data-t="shift"></th><th data-t="start"></th><th data-t="end"></th><th>Overtime</th><th data-t="status"></th></tr></thead><tbody id="tb"></tbody></table>
+    </div>
+  </div>
+  <footer data-t="foot"></footer>
+</main>
+<div id="print"></div>
+
+<script>
+// ---- Kernlogik (läuft im Browser und in Node zum Testen) ----
+const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function parseBadges(text) {
+  const days = {}; let name = null;
+  for (const line of text.split(/\r?\n/).slice(1)) {
+    const c = [...line.matchAll(/"([^"]*)"/g)].map(m => m[1]);
+    if (c.length < 7) continue;
+    const m = c[1].match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})/);
+    if (!m) continue;
+    name = name || c[0].trim();
+    const key = `${m[3]}-${m[2]}-${m[1]}`;
+    const min = (+m[4]) * 60 + (+m[5]);
+    const d = days[key] || (days[key] = {});
+    const a = c[6].toLowerCase();
+    if (a.startsWith("entr")) d.in = d.in === undefined ? min : Math.min(d.in, min);
+    else if (a.startsWith("sortie")) d.out = d.out === undefined ? min : Math.max(d.out, min);
+  }
+  return { name, days };
+}
+
+function monthsIn(days) {
+  return [...new Set(Object.keys(days).map(k => k.slice(0, 7)))].sort();
+}
+
+const hm = m => (m < 0 ? "-" : "") + String(Math.floor(Math.abs(m) / 60)).padStart(2, "0") + "h" + String(Math.abs(m) % 60).padStart(2, "0");
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const cell = (t, st) => `<table:table-cell${st ? ` table:style-name="${st}"` : ""} office:value-type="string" calcext:value-type="string"><text:p>${esc(t)}</text:p></table:table-cell>`;
+
+// Schicht = 08:00, 09:00 oder 10:00 – die, deren Beginn am nächsten an der Badge-Zeit liegt
+// (bis xx:30 zu spät zählt noch als diese Schicht). Kann pro Tag überschrieben werden.
+// Vor Schichtbeginn zählt nicht. Overtime erst nach Schichtende, nur volle 15 Min.
+// Zu spät kommen / früher gehen wird minutengenau abgezogen.
+const SHIFTS = [8 * 60, 9 * 60, 10 * 60];
+function autoShift(inMin) {
+  let shift = SHIFTS[0];
+  for (const s of SHIFTS) if (inMin > s - 30) shift = s;
+  return shift;
+}
+function overtime(inMin, outMin, len, forcedShift) {
+  const shift = forcedShift || autoShift(inMin);
+  const end = shift + len;
+  const late = Math.max(0, inMin - shift);
+  const net = (outMin - end) - late;
+  const min = net > 0 ? Math.floor(net / 15) * 15 : net;
+  return { min, shiftMin: shift, shift: hm(shift) + "–" + hm(end) };
+}
+
+// ---- Gesetzliche Feiertage Luxemburg ----
+function easter(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4,
+    f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30,
+    i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451),
+    mo = Math.floor((h + l - 7 * m + 114) / 31), da = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(y, mo - 1, da);
+}
+function luxHolidays(y) {
+  const out = {}, key = d => `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const add = (d, k) => out[key(d)] = k;
+  const e = easter(y), plus = n => new Date(e.getFullYear(), e.getMonth(), e.getDate() + n);
+  add(new Date(y, 0, 1), "newyear"); add(plus(1), "eastermon"); add(new Date(y, 4, 1), "labour");
+  add(new Date(y, 4, 9), "europe"); add(plus(39), "ascension"); add(plus(50), "whitmon");
+  add(new Date(y, 5, 23), "national"); add(new Date(y, 7, 15), "assumption"); add(new Date(y, 10, 1), "allsaints");
+  add(new Date(y, 11, 25), "xmas"); add(new Date(y, 11, 26), "stephen");
+  return out;
+}
+const HOLIDAY_FR = { newyear: "Jour de l'An", eastermon: "Lundi de Pâques", labour: "Fête du Travail", europe: "Journée de l'Europe",
+  ascension: "Ascension", whitmon: "Lundi de Pentecôte", national: "Fête nationale", assumption: "Assomption",
+  allsaints: "Toussaint", xmas: "Noël", stephen: "Saint-Étienne" };
+
+// Status, die man für Tage ohne Badge wählen kann -> Darstellung im .ods
+const STATUS = {
+  CONGE:   { text: "CONGE",      style: "ce7",  merged: true },
+  recup:   { text: "recup",      style: "ceRecup", merged: true },
+  MALADIE: { text: "MALADIE",    style: "ce11", merged: true },
+  FERIE:   { text: "JOUR FERIE", style: "ceFerie", merged: true },
+};
+function statusCells(st, note) {
+  const S = STATUS[st];
+  const tail = note ? cell(note) : "<table:table-cell/>";
+  if (S.merged)
+    return `<table:table-cell table:style-name="${S.style}" office:value-type="string" calcext:value-type="string" table:number-columns-spanned="3" table:number-rows-spanned="1"><text:p>${esc(S.text)}</text:p></table:table-cell><table:covered-table-cell table:number-columns-repeated="2" table:style-name="${S.style}"/>` + tail;
+  return cell(S.text, S.style) + cell(S.text, S.style) + cell(S.text, S.style) + tail;
+}
+
+// overrides: { [day]: { status: "auto"|"none"|"CONGE"|..., shift: 0|480|540|600 } }
+function buildContent(tpl, badges, year, month, name, hours, opts = {}) {
+  const incompleteLabel = opts.incompleteLabel || "Badge incomplete";
+  const ov = opts.overrides || {};
+  const hol = luxHolidays(year);
+  const ndays = new Date(year, month, 0).getDate();
+  const soll = Math.round(hours * 60);
+  const start = tpl.indexOf("<table:table ");
+  const end = tpl.indexOf("</table:table>", start);
+  let sheet = tpl.slice(start, end);
+  let total = 0, worked = 0; const missing = [], rows = [];
+  const mm = String(month).padStart(2, "0");
+  sheet = sheet.replace(/<table:table-row table:style-name="ro2"><table:table-cell[^>]*office:value-type="float" office:value="\d+"[^>]*>[\s\S]*?<\/table:table-row>/g, row => {
+    const day = +row.match(/office:value="(\d+)"/)[1];
+    if (day > ndays) return '<table:table-row table:style-name="ro2"><table:table-cell table:number-columns-repeated="6"/></table:table-row>';
+    const head = row.slice(0, row.indexOf("</table:table-cell>") + 19);
+    const dd = String(day).padStart(2, "0");
+    const dow = new Date(year, month - 1, day).getDay();
+    const wd = WD[dow], weekend = dow === 0 || dow === 6;
+    const holiday = hol[`${mm}-${dd}`] || null;
+    const b = badges.days[`${year}-${mm}-${dd}`] || {};
+    const o = ov[day] || {};
+    const r = { day, wd, s: "", e: "", ot: "", kind: "", holiday, status: "", shiftSel: o.shift || 0 };
+    let cells = cell(wd);
+    if (b.in !== undefined && b.out !== undefined) {
+      const ot = overtime(b.in, b.out, soll, o.shift || 0); total += ot.min; worked++;
+      Object.assign(r, { kind: "work", s: hm(b.in), e: hm(b.out), ot: hm(ot.min), shift: ot.shift, shiftAuto: autoShift(b.in) });
+      cells += cell(r.s) + cell(r.e) + cell(r.ot) + (holiday ? cell(HOLIDAY_FR[holiday]) : "<table:table-cell/>");
+    } else if (weekend) {
+      r.kind = "we";
+      cells += '<table:table-cell table:style-name="ce28" table:number-columns-repeated="3"/><table:table-cell/>';
+    } else {
+      // Werktag ohne vollständigen Badge
+      const incomplete = b.in !== undefined || b.out !== undefined;
+      const autoStatus = holiday && !incomplete ? "FERIE" : "none";
+      const st = !o.status || o.status === "auto" ? autoStatus : o.status;
+      Object.assign(r, { kind: incomplete ? "incomplete" : "off", status: st, autoStatus });
+      if (st !== "none") {
+        cells += statusCells(st, holiday ? HOLIDAY_FR[holiday] : "");
+      } else if (incomplete) {
+        Object.assign(r, { s: b.in !== undefined ? hm(b.in) : "?", e: b.out !== undefined ? hm(b.out) : "?", ot: "?" });
+        cells += cell(r.s) + cell(r.e) + cell("?") + cell(incompleteLabel);
+        missing.push(r);
+      } else {
+        cells += '<table:table-cell table:number-columns-repeated="3"/><table:table-cell/>';
+        missing.push(r);
+      }
+    }
+    rows.push(r);
+    return head + cells + "</table:table-row>";
+  });
+  sheet = sheet.replace(/(<text:p>NAME: ?<\/text:p><\/table:table-cell><table:table-cell[^>]*><text:p>)[^<]*/, (_, a) => a + esc(name));
+  sheet = sheet.replace(/<text:p>\d{2}\/\d{4}<\/text:p>/, `<text:p>${mm}/${year}</text:p>`);
+  sheet += '<table:table-row table:style-name="ro2"><table:table-cell table:number-columns-repeated="6"/></table:table-row>'
+    + '<table:table-row table:style-name="ro2"><table:table-cell table:number-columns-repeated="3"/>'
+    + cell("Total", "ce23") + cell(hm(total), "ce23") + "<table:table-cell/></table:table-row>";
+  return { xml: tpl.slice(0, start) + sheet + tpl.slice(end), total, worked, missing, rows };
+}
+
+// ---- Minimaler ZIP-Writer (unkomprimiert, reicht für .ods) ----
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+
+function zip(entries) { // [[name, Uint8Array], ...]
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  for (const [name, data] of entries) {
+    const n = enc.encode(name), crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true);
+    h.setUint16(8, 0, true); h.setUint16(10, 0, true); h.setUint16(12, 0x21, true);
+    h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true);
+    h.setUint16(26, n.length, true); h.setUint16(28, 0, true);
+    parts.push(new Uint8Array(h.buffer), n, data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+    c.setUint16(10, 0, true); c.setUint16(12, 0, true); c.setUint16(14, 0x21, true);
+    c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true);
+    c.setUint16(28, n.length, true); c.setUint32(42, off, true);
+    central.push(new Uint8Array(c.buffer), n);
+    off += 30 + n.length + data.length;
+  }
+  const csize = central.reduce((s, p) => s + p.length, 0);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, entries.length, true); e.setUint16(10, entries.length, true);
+  e.setUint32(12, csize, true); e.setUint32(16, off, true);
+  const all = [...parts, ...central, new Uint8Array(e.buffer)];
+  const out = new Uint8Array(all.reduce((s, p) => s + p.length, 0)); let p = 0;
+  for (const a of all) { out.set(a, p); p += a.length; }
+  return out;
+}
+
+function buildOds(files, content) {
+  const enc = new TextEncoder();
+  const order = ["mimetype", "META-INF/manifest.xml", "content.xml", "styles.xml", "meta.xml", "settings.xml", "manifest.rdf"];
+  return zip(order.map(n => [n, enc.encode(n === "content.xml" ? content : files[n])]));
+}
+
+if (typeof module !== "undefined") module.exports = { parseBadges, monthsIn, buildContent, buildOds, hm, overtime, luxHolidays };
+
+// ---- XLSX (selbst gebaut, gleiches Layout wie die .ods-Vorlage) ----
+function buildXlsx(r, name, year, month, incompleteLabel = "Badge incomplete") {
+  const enc = new TextEncoder();
+  const X = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const COLS = "ABCDEF";
+  // Stil-Indizes (cellXfs)
+  const S = { label: 1, grey: 2, greyC: 3, we: 4, CONGE: 5, MALADIE: 6, recup: 7, FERIE: 8, num: 9, note: 0 };
+  const rowsXml = []; const merges = [];
+  const str = (ref, v, s) => `<c r="${ref}" t="inlineStr" s="${s}"><is><t xml:space="preserve">${X(v)}</t></is></c>`;
+  const num = (ref, v, s) => `<c r="${ref}" s="${s}"><v>${v}</v></c>`;
+  const emp = (ref, s) => `<c r="${ref}" s="${s}"/>`;
+  const row = (n, cells) => rowsXml.push(`<row r="${n}" ht="18" customHeight="1">${cells.join("")}</row>`);
+
+  row(1, [str("C1", "NAME: ", S.label), str("D1", name, 0)]);
+  row(2, [str("B2", "Mounth: ", S.label), str("E2", `${String(month).padStart(2, "0")}/${year}`, 0)]);
+  row(4, [str("A4", "Day", S.grey), emp("B4", S.grey), str("C4", "Start time", S.grey), str("D4", "End time", S.grey), str("E4", "Overtime", S.grey)]);
+  let n = 5;
+  for (const x of r.rows) {
+    const c = [num(`A${n}`, x.day, S.num), str(`B${n}`, x.wd, S.grey)];
+    const holFR = x.holiday ? HOLIDAY_FR[x.holiday] : "";
+    if (x.kind === "we") {
+      c.push(emp(`C${n}`, S.we), emp(`D${n}`, S.we), emp(`E${n}`, S.we));
+    } else if ((x.kind === "off" || x.kind === "incomplete") && x.status && x.status !== "none") {
+      const st = S[x.status];
+      c.push(str(`C${n}`, STATUS[x.status].text, st), emp(`D${n}`, st), emp(`E${n}`, st));
+      merges.push(`C${n}:E${n}`);
+      if (holFR) c.push(str(`F${n}`, holFR, S.note));
+    } else {
+      c.push(x.s ? str(`C${n}`, x.s, S.greyC) : emp(`C${n}`, S.greyC),
+             x.e ? str(`D${n}`, x.e, S.greyC) : emp(`D${n}`, S.greyC),
+             x.ot ? str(`E${n}`, x.ot, S.greyC) : emp(`E${n}`, S.greyC));
+      if (x.kind === "incomplete") c.push(str(`F${n}`, incompleteLabel, S.note));
+      else if (holFR) c.push(str(`F${n}`, holFR, S.note));
+    }
+    row(n++, c);
+  }
+  n++;
+  row(n, [str(`D${n}`, "Total", S.grey), str(`E${n}`, hm(r.total), S.greyC)]);
+
+  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews>
+<sheetFormatPr defaultRowHeight="18"/>
+<cols><col min="1" max="1" width="6" customWidth="1"/><col min="2" max="2" width="8" customWidth="1"/><col min="3" max="5" width="13" customWidth="1"/><col min="6" max="6" width="22" customWidth="1"/></cols>
+<sheetData>${rowsXml.join("")}</sheetData>
+${merges.length ? `<mergeCells count="${merges.length}">${merges.map(m => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>` : ""}
+<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>
+<pageSetup paperSize="9" orientation="portrait"/>
+</worksheet>`;
+  const fill = rgb => `<fill><patternFill patternType="solid"><fgColor rgb="FF${rgb}"/><bgColor indexed="64"/></patternFill></fill>`;
+  const xf = (font, fill, border, h, extra = "") => `<xf numFmtId="0" fontId="${font}" fillId="${fill}" borderId="${border}" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"${extra}><alignment horizontal="${h}" vertical="center"/></xf>`;
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="3"><font><sz val="11"/><name val="Arial"/></font><font><b/><sz val="11"/><name val="Arial"/></font><font><sz val="11"/><color rgb="FFFFFFFF"/><name val="Arial"/></font></fonts>
+<fills count="8"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${fill("CCCCCC")}${fill("999999")}${fill("00A933")}${fill("FFFF00")}${fill("6FA8DC")}${fill("FFB66C")}</fills>
+<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="10">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+${xf(1, 0, 0, "left")}
+${xf(0, 2, 1, "left")}
+${xf(0, 2, 1, "center")}
+${xf(0, 3, 1, "center")}
+${xf(2, 4, 1, "center")}
+${xf(0, 5, 1, "center")}
+${xf(2, 6, 1, "center")}
+${xf(0, 7, 1, "center")}
+${xf(0, 2, 1, "right")}
+</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+  const files = [
+    ["[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
+    ["_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ["xl/workbook.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Timesheet" sheetId="1" r:id="rId1"/></sheets></workbook>`],
+    ["xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ["xl/styles.xml", styles],
+    ["xl/worksheets/sheet1.xml", sheet],
+  ];
+  return zip(files.map(([n, t]) => [n, enc.encode(t)]));
+}
+if (typeof module !== "undefined") module.exports.buildXlsx = buildXlsx;
+
+const TPL = {"mimetype": "application/vnd.oasis.opendocument.spreadsheet", "content.xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<office:document-content xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" xmlns:ooo=\"http://openoffice.org/2004/office\" xmlns:fo=\"urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:meta=\"urn:oasis:names:tc:opendocument:xmlns:meta:1.0\" xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\" xmlns:rpt=\"http://openoffice.org/2005/report\" xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\" xmlns:dr3d=\"urn:oasis:names:tc:opendocument:xmlns:dr3d:1.0\" xmlns:svg=\"urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0\" xmlns:chart=\"urn:oasis:names:tc:opendocument:xmlns:chart:1.0\" xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\" xmlns:number=\"urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0\" xmlns:ooow=\"http://openoffice.org/2004/writer\" xmlns:oooc=\"http://openoffice.org/2004/calc\" xmlns:of=\"urn:oasis:names:tc:opendocument:xmlns:of:1.2\" xmlns:xforms=\"http://www.w3.org/2002/xforms\" xmlns:tableooo=\"http://openoffice.org/2009/table\" xmlns:calcext=\"urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0\" xmlns:drawooo=\"http://openoffice.org/2010/draw\" xmlns:xhtml=\"http://www.w3.org/1999/xhtml\" xmlns:loext=\"urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0\" xmlns:field=\"urn:openoffice:names:experimental:ooo-ms-interop:xmlns:field:1.0\" xmlns:math=\"http://www.w3.org/1998/Math/MathML\" xmlns:form=\"urn:oasis:names:tc:opendocument:xmlns:form:1.0\" xmlns:script=\"urn:oasis:names:tc:opendocument:xmlns:script:1.0\" xmlns:formx=\"urn:openoffice:names:experimental:ooxml-odf-interop:xmlns:form:1.0\" xmlns:dom=\"http://www.w3.org/2001/xml-events\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:grddl=\"http://www.w3.org/2003/g/data-view#\" xmlns:css3t=\"http://www.w3.org/TR/css3-text/\" xmlns:presentation=\"urn:oasis:names:tc:opendocument:xmlns:presentation:1.0\" office:version=\"1.3\"><office:scripts/><office:font-face-decls><style:font-face style:name=\"Andale Sans UI\" svg:font-family=\"&apos;Andale Sans UI&apos;\" style:font-family-generic=\"system\" style:font-pitch=\"variable\"/><style:font-face style:name=\"Arial\" svg:font-family=\"Arial\" style:font-family-generic=\"swiss\" style:font-pitch=\"variable\"/><style:font-face style:name=\"Liberation Sans\" svg:font-family=\"&apos;Liberation Sans&apos;\" style:font-family-generic=\"swiss\" style:font-pitch=\"variable\"/><style:font-face style:name=\"Lucida Sans\" svg:font-family=\"&apos;Lucida Sans&apos;\" style:font-family-generic=\"system\" style:font-pitch=\"variable\"/><style:font-face style:name=\"Microsoft YaHei\" svg:font-family=\"&apos;Microsoft YaHei&apos;\" style:font-family-generic=\"system\" style:font-pitch=\"variable\"/><style:font-face style:name=\"Tahoma\" svg:font-family=\"Tahoma\" style:font-family-generic=\"system\" style:font-pitch=\"variable\"/><\/office:font-face-decls><office:automatic-styles><style:style style:name=\"co1\" style:family=\"table-column\"><style:table-column-properties fo:break-before=\"auto\" style:column-width=\"2.267cm\"/><\/style:style><style:style style:name=\"co2\" style:family=\"table-column\"><style:table-column-properties fo:break-before=\"auto\" style:column-width=\"2.258cm\"/><\/style:style><style:style style:name=\"ro3\" style:family=\"table-row\"><style:table-row-properties style:row-height=\"0.453cm\" fo:break-before=\"auto\" style:use-optimal-row-height=\"true\"/><\/style:style><style:style style:name=\"ro2\" style:family=\"table-row\"><style:table-row-properties style:row-height=\"0.557cm\" fo:break-before=\"auto\" style:use-optimal-row-height=\"true\"/><\/style:style><style:style style:name=\"ro4\" style:family=\"table-row\"><style:table-row-properties style:row-height=\"0.452cm\" fo:break-before=\"auto\" style:use-optimal-row-height=\"true\"/><\/style:style><style:style style:name=\"ta1\" style:family=\"table\" style:master-page-name=\"Default\"><style:table-properties table:display=\"true\" style:writing-mode=\"lr-tb\"/><\/style:style><number:date-style style:name=\"N32\" number:automatic-order=\"true\"><number:month number:style=\"long\"/><number:text>/<\/number:text><number:year/><\/number:date-style><style:style style:name=\"ce21\" style:family=\"table-cell\" style:parent-style-name=\"Default\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" style:text-align-source=\"value-type\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties style:use-window-font-color=\"true\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"11pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"bold\" style:font-size-asian=\"11pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"bold\" style:font-name-complex=\"Arial\" style:font-size-complex=\"11pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"bold\"/><\/style:style><style:style style:name=\"ce22\" style:family=\"table-cell\" style:parent-style-name=\"Default\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" style:text-align-source=\"value-type\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties style:use-window-font-color=\"true\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"11pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"normal\" style:font-size-asian=\"11pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"normal\" style:font-name-complex=\"Arial\" style:font-size-complex=\"11pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"normal\"/><\/style:style><style:style style:name=\"ce23\" style:family=\"table-cell\" style:parent-style-name=\"Default\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" fo:background-color=\"#cccccc\" style:diagonal-bl-tr=\"none\" style:diagonal-tl-br=\"none\" style:text-align-source=\"value-type\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" fo:border=\"0.74pt solid #000000\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties style:use-window-font-color=\"true\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"11pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"normal\" style:font-size-asian=\"11pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"normal\" style:font-name-complex=\"Arial\" style:font-size-complex=\"11pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"normal\"/><\/style:style><style:style style:name=\"ce24\" style:family=\"table-cell\" style:parent-style-name=\"Default\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" fo:background-color=\"#cccccc\" style:diagonal-bl-tr=\"none\" style:diagonal-tl-br=\"none\" style:text-align-source=\"value-type\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" fo:border=\"0.74pt solid #000000\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties fo:color=\"#333333\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"11pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"normal\" style:font-size-asian=\"11pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"normal\" style:font-name-complex=\"Arial\" style:font-size-complex=\"11pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"normal\"/><\/style:style><style:style style:name=\"ce25\" style:family=\"table-cell\" style:parent-style-name=\"Default\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" fo:background-color=\"#cccccc\" style:diagonal-bl-tr=\"none\" style:diagonal-tl-br=\"none\" style:text-align-source=\"value-type\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" fo:border=\"0.74pt solid #000000\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties style:use-window-font-color=\"true\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"10pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"normal\" style:font-size-asian=\"10pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"normal\" style:font-name-complex=\"Arial\" style:font-size-complex=\"10pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"normal\"/><\/style:style><style:style style:name=\"ce26\" style:family=\"table-cell\" style:parent-style-name=\"Default\" style:data-style-name=\"N32\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" style:text-align-source=\"value-type\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties style:use-window-font-color=\"true\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"11pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"normal\" style:font-size-asian=\"11pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"normal\" style:font-name-complex=\"Arial\" style:font-size-complex=\"11pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"normal\"/><\/style:style><style:style style:name=\"ce7\" style:family=\"table-cell\" style:parent-style-name=\"Default\" style:data-style-name=\"N149\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" fo:background-color=\"#00a933\" style:diagonal-bl-tr=\"none\" style:diagonal-tl-br=\"none\" style:text-align-source=\"fix\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" fo:border=\"0.74pt solid #000000\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties fo:text-align=\"center\" css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties style:use-window-font-color=\"true\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"11pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"normal\" style:font-size-asian=\"11pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"normal\" style:font-name-complex=\"Arial\" style:font-size-complex=\"11pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"normal\"/><\/style:style><style:style style:name=\"ce28\" style:family=\"table-cell\" style:parent-style-name=\"Default\" style:data-style-name=\"N149\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" fo:background-color=\"#999999\" style:diagonal-bl-tr=\"none\" style:diagonal-tl-br=\"none\" style:text-align-source=\"fix\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" fo:border=\"0.74pt solid #000000\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties fo:text-align=\"center\" css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties style:use-window-font-color=\"true\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"11pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"normal\" style:font-size-asian=\"11pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"normal\" style:font-name-complex=\"Arial\" style:font-size-complex=\"11pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"normal\"/><\/style:style><style:style style:name=\"ce29\" style:family=\"table-cell\" style:parent-style-name=\"Default\" style:data-style-name=\"N149\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" fo:background-color=\"#cccccc\" style:diagonal-bl-tr=\"none\" style:diagonal-tl-br=\"none\" style:text-align-source=\"fix\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" fo:border=\"0.74pt solid #000000\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties fo:text-align=\"center\" css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties style:use-window-font-color=\"true\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"11pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"normal\" style:font-size-asian=\"11pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"normal\" style:font-name-complex=\"Arial\" style:font-size-complex=\"11pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"normal\"/><\/style:style><style:style style:name=\"ce30\" style:family=\"table-cell\" style:parent-style-name=\"Default\" style:data-style-name=\"N149\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" fo:background-color=\"#dee6ef\" style:diagonal-bl-tr=\"none\" style:diagonal-tl-br=\"none\" style:text-align-source=\"fix\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" fo:border=\"0.74pt solid #000000\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties fo:text-align=\"center\" css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties style:use-window-font-color=\"true\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"11pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"normal\" style:font-size-asian=\"11pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"normal\" style:font-name-complex=\"Arial\" style:font-size-complex=\"11pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"normal\"/><\/style:style><style:style style:name=\"ce11\" style:family=\"table-cell\" style:parent-style-name=\"Default\" style:data-style-name=\"N149\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" fo:background-color=\"#ffff00\" style:diagonal-bl-tr=\"none\" style:diagonal-tl-br=\"none\" style:text-align-source=\"fix\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" fo:border=\"0.74pt solid #000000\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties fo:text-align=\"center\" css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties style:use-window-font-color=\"true\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"11pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"normal\" style:font-size-asian=\"11pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"normal\" style:font-name-complex=\"Arial\" style:font-size-complex=\"11pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"normal\"/><\/style:style><style:style style:name=\"ceRecup\" style:family=\"table-cell\" style:parent-style-name=\"Default\" style:data-style-name=\"N149\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" fo:background-color=\"#6fa8dc\" style:diagonal-bl-tr=\"none\" style:diagonal-tl-br=\"none\" style:text-align-source=\"fix\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" fo:border=\"0.74pt solid #000000\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties fo:text-align=\"center\" css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties style:use-window-font-color=\"true\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"11pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"normal\" style:font-size-asian=\"11pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"normal\" style:font-name-complex=\"Arial\" style:font-size-complex=\"11pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"normal\"/><\/style:style><style:style style:name=\"ceFerie\" style:family=\"table-cell\" style:parent-style-name=\"Default\" style:data-style-name=\"N149\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" fo:background-color=\"#ffb66c\" style:diagonal-bl-tr=\"none\" style:diagonal-tl-br=\"none\" style:text-align-source=\"fix\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" fo:border=\"0.74pt solid #000000\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties fo:text-align=\"center\" css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties style:use-window-font-color=\"true\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"11pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"normal\" style:font-size-asian=\"11pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"normal\" style:font-name-complex=\"Arial\" style:font-size-complex=\"11pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"normal\"/><\/style:style><style:style style:name=\"ce13\" style:family=\"table-cell\" style:parent-style-name=\"Default\" style:data-style-name=\"N149\"><style:table-cell-properties style:glyph-orientation-vertical=\"0\" fo:background-color=\"#ffffd7\" style:diagonal-bl-tr=\"none\" style:diagonal-tl-br=\"none\" style:text-align-source=\"fix\" style:repeat-content=\"false\" fo:wrap-option=\"no-wrap\" fo:border=\"0.74pt solid #000000\" style:direction=\"ltr\" fo:padding=\"0.071cm\" style:rotation-angle=\"0\" style:rotation-align=\"none\" style:shrink-to-fit=\"false\" style:vertical-align=\"middle\" loext:vertical-justify=\"auto\"/><style:paragraph-properties fo:text-align=\"center\" css3t:text-justify=\"auto\" fo:margin-left=\"0cm\" style:writing-mode=\"page\"/><style:text-properties style:use-window-font-color=\"true\" style:text-outline=\"false\" style:text-line-through-style=\"none\" style:text-line-through-type=\"none\" style:font-name=\"Arial\" fo:font-size=\"11pt\" fo:font-style=\"normal\" fo:text-shadow=\"none\" style:text-underline-style=\"none\" fo:font-weight=\"normal\" style:font-size-asian=\"11pt\" style:font-style-asian=\"normal\" style:font-weight-asian=\"normal\" style:font-name-complex=\"Arial\" style:font-size-complex=\"11pt\" style:font-style-complex=\"normal\" style:font-weight-complex=\"normal\"/><\/style:style><\/office:automatic-styles><office:body><office:spreadsheet><table:table table:name=\"Sheet1\" table:style-name=\"ta1\" table:print=\"false\"><table:table-column table:style-name=\"co1\" table:default-cell-style-name=\"ce23\"/><table:table-column table:style-name=\"co2\" table:default-cell-style-name=\"ce25\"/><table:table-column table:style-name=\"co2\" table:number-columns-repeated=\"3\" table:default-cell-style-name=\"ce29\"/><table:table-column table:style-name=\"co2\" table:default-cell-style-name=\"Default\"/><table:table-row table:style-name=\"ro2\"><table:table-cell table:style-name=\"ce21\"/><table:table-cell table:style-name=\"ce22\"/><table:table-cell table:style-name=\"ce21\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>NAME: <\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce22\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>-<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce22\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:style-name=\"ce22\"/><table:table-cell table:style-name=\"ce21\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Mounth: <\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce26\"/><table:table-cell table:style-name=\"ce22\"/><table:table-cell table:style-name=\"ce22\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>10/2026<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:style-name=\"ce22\" table:number-columns-repeated=\"5\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Day<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce23\"/><table:table-cell table:style-name=\"ce23\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Start time<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce23\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>End time<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce23\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Overtime<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:style-name=\"ce24\" office:value-type=\"float\" office:value=\"1\" calcext:value-type=\"float\"><text:p>1<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Thu<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce7\" office:value-type=\"string\" calcext:value-type=\"string\" table:number-columns-spanned=\"3\" table:number-rows-spanned=\"1\"><text:p>CONGE<\/text:p><\/table:table-cell><table:covered-table-cell table:number-columns-repeated=\"2\" table:style-name=\"ce7\"/><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>&apos;<\/text:p><\/table:table-cell><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell office:value-type=\"float\" office:value=\"2\" calcext:value-type=\"float\"><text:p>2<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Fri<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce7\" office:value-type=\"string\" calcext:value-type=\"string\" table:number-columns-spanned=\"3\" table:number-rows-spanned=\"1\"><text:p>CONGE<\/text:p><\/table:table-cell><table:covered-table-cell table:number-columns-repeated=\"2\" table:style-name=\"ce7\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell office:value-type=\"float\" office:value=\"3\" calcext:value-type=\"float\"><text:p>3<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Sat<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce28\" table:number-columns-repeated=\"3\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell office:value-type=\"float\" office:value=\"4\" calcext:value-type=\"float\"><text:p>4<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Sun<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce28\" table:number-columns-repeated=\"3\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell office:value-type=\"float\" office:value=\"5\" calcext:value-type=\"float\"><text:p>5<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Mon<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce7\" office:value-type=\"string\" calcext:value-type=\"string\" table:number-columns-spanned=\"3\" table:number-rows-spanned=\"1\"><text:p>CONGE<\/text:p><\/table:table-cell><table:covered-table-cell table:number-columns-repeated=\"2\" table:style-name=\"ce7\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell office:value-type=\"float\" office:value=\"6\" calcext:value-type=\"float\"><text:p>6<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Tue<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce7\" office:value-type=\"string\" calcext:value-type=\"string\" table:number-columns-spanned=\"3\" table:number-rows-spanned=\"1\"><text:p>CONGE<\/text:p><\/table:table-cell><table:covered-table-cell table:number-columns-repeated=\"2\" table:style-name=\"ce7\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A10]+1\" office:value-type=\"float\" office:value=\"7\" calcext:value-type=\"float\"><text:p>7<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Wed<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce7\" office:value-type=\"string\" calcext:value-type=\"string\" table:number-columns-spanned=\"3\" table:number-rows-spanned=\"1\"><text:p>CONGE<\/text:p><\/table:table-cell><table:covered-table-cell table:number-columns-repeated=\"2\" table:style-name=\"ce7\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A11]+1\" office:value-type=\"float\" office:value=\"8\" calcext:value-type=\"float\"><text:p>8<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Thu<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>10h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>19h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h00<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A12]+1\" office:value-type=\"float\" office:value=\"9\" calcext:value-type=\"float\"><text:p>9<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Fri<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>10h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>19h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h00<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A13]+1\" office:value-type=\"float\" office:value=\"10\" calcext:value-type=\"float\"><text:p>10<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Sat<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce28\" table:number-columns-repeated=\"3\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A14]+1\" office:value-type=\"float\" office:value=\"11\" calcext:value-type=\"float\"><text:p>11<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Sun<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce28\" table:number-columns-repeated=\"3\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A15]+1\" office:value-type=\"float\" office:value=\"12\" calcext:value-type=\"float\"><text:p>12<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Mon<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>08h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>17h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h00<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A16]+1\" office:value-type=\"float\" office:value=\"13\" calcext:value-type=\"float\"><text:p>13<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Tue<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>08h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>17h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h00<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A17]+1\" office:value-type=\"float\" office:value=\"14\" calcext:value-type=\"float\"><text:p>14<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Wed<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce30\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>08h34<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce30\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>17h35<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h00<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A18]+1\" office:value-type=\"float\" office:value=\"15\" calcext:value-type=\"float\"><text:p>15<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Thu<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>08h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>17h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h00<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A19]+1\" office:value-type=\"float\" office:value=\"16\" calcext:value-type=\"float\"><text:p>16<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Fri<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>08h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>17h15<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce11\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h15<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A20]+1\" office:value-type=\"float\" office:value=\"17\" calcext:value-type=\"float\"><text:p>17<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Sat<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce28\" table:number-columns-repeated=\"3\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A21]+1\" office:value-type=\"float\" office:value=\"18\" calcext:value-type=\"float\"><text:p>18<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Sun<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce28\" table:number-columns-repeated=\"3\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A22]+1\" office:value-type=\"float\" office:value=\"19\" calcext:value-type=\"float\"><text:p>19<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Mon<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>10h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>19h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h00<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A23]+1\" office:value-type=\"float\" office:value=\"20\" calcext:value-type=\"float\"><text:p>20<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Tue<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>10h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>19h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h00<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A24]+1\" office:value-type=\"float\" office:value=\"21\" calcext:value-type=\"float\"><text:p>21<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Wed<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce30\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>10h23<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>19h00<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce30\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>-00h23<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A25]+1\" office:value-type=\"float\" office:value=\"22\" calcext:value-type=\"float\"><text:p>22<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Thu<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>10h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>19h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h00<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A26]+1\" office:value-type=\"float\" office:value=\"23\" calcext:value-type=\"float\"><text:p>23<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Fri<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>10h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>19h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h00<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A27]+1\" office:value-type=\"float\" office:value=\"24\" calcext:value-type=\"float\"><text:p>24<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Sat<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce28\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>09h<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce28\" table:number-columns-repeated=\"2\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A28]+1\" office:value-type=\"float\" office:value=\"25\" calcext:value-type=\"float\"><text:p>25<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Sun<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce28\" table:number-columns-repeated=\"3\"/><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A29]+1\" office:value-type=\"float\" office:value=\"26\" calcext:value-type=\"float\"><text:p>26<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Mon<\/text:p><\/table:table-cell><table:table-cell table:number-columns-repeated=\"3\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>recup<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A30]+1\" office:value-type=\"float\" office:value=\"27\" calcext:value-type=\"float\"><text:p>27<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Thu<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>08h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>17h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h00<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:formula=\"of:=[.A31]+1\" office:value-type=\"float\" office:value=\"28\" calcext:value-type=\"float\"><text:p>28<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Wed<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>08h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>17h00<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h00<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell table:style-name=\"ce24\" office:value-type=\"float\" office:value=\"29\" calcext:value-type=\"float\"><text:p>29<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Thu<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce30\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>08h05<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce30\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>17h30<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce13\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>00h30<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>*temps ratrapp\u00e9<\/text:p><\/table:table-cell><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell office:value-type=\"float\" office:value=\"30\" calcext:value-type=\"float\"><text:p>30<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Fri<\/text:p><\/table:table-cell><table:table-cell table:number-columns-repeated=\"3\" office:value-type=\"string\" calcext:value-type=\"string\"><text:p>recup<\/text:p><\/table:table-cell><table:table-cell/><\/table:table-row><table:table-row table:style-name=\"ro2\"><table:table-cell office:value-type=\"float\" office:value=\"31\" calcext:value-type=\"float\"><text:p>31<\/text:p><\/table:table-cell><table:table-cell office:value-type=\"string\" calcext:value-type=\"string\"><text:p>Sat<\/text:p><\/table:table-cell><table:table-cell table:style-name=\"ce28\" table:number-columns-repeated=\"3\"/><table:table-cell/><\/table:table-row><\/table:table><table:table table:name=\"Sheet2\" table:style-name=\"ta1\" table:print=\"false\"><table:table-column table:style-name=\"co1\" table:default-cell-style-name=\"Default\"/><table:table-row table:style-name=\"ro3\"><table:table-cell/><\/table:table-row><\/table:table><table:table table:name=\"Sheet3\" table:style-name=\"ta1\" table:print=\"false\"><table:table-column table:style-name=\"co1\" table:default-cell-style-name=\"Default\"/><table:table-row table:style-name=\"ro3\"><table:table-cell/><\/table:table-row><\/table:table><table:named-expressions/><\/office:spreadsheet><\/office:body><\/office:document-content>", "styles.xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<office:document-styles xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" xmlns:ooo=\"http://openoffice.org/2004/office\" xmlns:fo=\"urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:meta=\"urn:oasis:names:tc:opendocument:xmlns:meta:1.0\" xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\" xmlns:rpt=\"http://openoffice.org/2005/report\" xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\" xmlns:dr3d=\"urn:oasis:names:tc:opendocument:xmlns:dr3d:1.0\" xmlns:svg=\"urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0\" xmlns:chart=\"urn:oasis:names:tc:opendocument:xmlns:chart:1.0\" xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\" xmlns:number=\"urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0\" xmlns:ooow=\"http://openoffice.org/2004/writer\" xmlns:oooc=\"http://openoffice.org/2004/calc\" xmlns:css3t=\"http://www.w3.org/TR/css3-text/\" xmlns:of=\"urn:oasis:names:tc:opendocument:xmlns:of:1.2\" xmlns:tableooo=\"http://openoffice.org/2009/table\" xmlns:calcext=\"urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0\" xmlns:drawooo=\"http://openoffice.org/2010/draw\" xmlns:xhtml=\"http://www.w3.org/1999/xhtml\" xmlns:loext=\"urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0\" xmlns:grddl=\"http://www.w3.org/2003/g/data-view#\" xmlns:field=\"urn:openoffice:names:experimental:ooo-ms-interop:xmlns:field:1.0\" xmlns:math=\"http://www.w3.org/1998/Math/MathML\" xmlns:form=\"urn:oasis:names:tc:opendocument:xmlns:form:1.0\" xmlns:script=\"urn:oasis:names:tc:opendocument:xmlns:script:1.0\" xmlns:dom=\"http://www.w3.org/2001/xml-events\" xmlns:presentation=\"urn:oasis:names:tc:opendocument:xmlns:presentation:1.0\" office:version=\"1.3\"><office:font-face-decls><style:font-face style:name=\"Andale Sans UI\" svg:font-family=\"&apos;Andale Sans UI&apos;\" style:font-family-generic=\"system\" style:font-pitch=\"variable\"/><style:font-face style:name=\"Arial\" svg:font-family=\"Arial\" style:font-family-generic=\"swiss\" style:font-pitch=\"variable\"/><style:font-face style:name=\"Liberation Sans\" svg:font-family=\"&apos;Liberation Sans&apos;\" style:font-family-generic=\"swiss\" style:font-pitch=\"variable\"/><style:font-face style:name=\"Lucida Sans\" svg:font-family=\"&apos;Lucida Sans&apos;\" style:font-family-generic=\"system\" style:font-pitch=\"variable\"/><style:font-face style:name=\"Microsoft YaHei\" svg:font-family=\"&apos;Microsoft YaHei&apos;\" style:font-family-generic=\"system\" style:font-pitch=\"variable\"/><style:font-face style:name=\"Tahoma\" svg:font-family=\"Tahoma\" style:font-family-generic=\"system\" style:font-pitch=\"variable\"/><\/office:font-face-decls><office:styles><style:default-style style:family=\"table-cell\"><style:table-cell-properties style:decimal-places=\"2\"/><style:paragraph-properties style:tab-stop-distance=\"1.25cm\"/><style:text-properties style:font-name=\"Arial\" fo:font-size=\"10pt\" fo:language=\"fr\" fo:country=\"FR\" style:font-name-asian=\"Andale Sans UI\" style:font-size-asian=\"10pt\" style:language-asian=\"zh\" style:country-asian=\"CN\" style:font-name-complex=\"Tahoma\" style:font-size-complex=\"10pt\" style:language-complex=\"hi\" style:country-complex=\"IN\"/><\/style:default-style><style:default-style style:family=\"graphic\"><style:graphic-properties svg:stroke-color=\"#3465a4\" draw:fill-color=\"#729fcf\" fo:wrap-option=\"no-wrap\" draw:shadow-offset-x=\"0.3cm\" draw:shadow-offset-y=\"0.3cm\" style:writing-mode=\"page\"/><style:paragraph-properties style:text-autospace=\"ideograph-alpha\" style:punctuation-wrap=\"simple\" style:line-break=\"strict\" loext:tab-stop-distance=\"0cm\" style:writing-mode=\"page\" style:font-independent-line-spacing=\"false\"><style:tab-stops/><\/style:paragraph-properties><style:text-properties style:use-window-font-color=\"true\" loext:opacity=\"0%\" fo:font-family=\"&apos;Liberation Serif&apos;\" style:font-family-generic=\"roman\" style:font-pitch=\"variable\" fo:font-size=\"12pt\" fo:language=\"fr\" fo:country=\"FR\" style:letter-kerning=\"true\" style:font-family-asian=\"&apos;Segoe UI&apos;\" style:font-family-generic-asian=\"system\" style:font-pitch-asian=\"variable\" style:font-size-asian=\"12pt\" style:language-asian=\"zh\" style:country-asian=\"CN\" style:font-name-complex=\"Tahoma\" style:font-size-complex=\"12pt\" style:language-complex=\"hi\" style:country-complex=\"IN\"/><\/style:default-style><style:style style:name=\"Default\" style:family=\"graphic\"/><style:style style:name=\"Note\" style:family=\"graphic\" style:parent-style-name=\"Default\"><style:graphic-properties draw:stroke=\"solid\" draw:marker-start=\"Extr\u00e9mit\u00e9s_20_de_20_fl\u00e8che_20_1\" draw:marker-start-width=\"0.2cm\" draw:marker-start-center=\"false\" draw:fill=\"solid\" draw:fill-color=\"#ffffc0\" draw:auto-grow-height=\"true\" draw:auto-grow-width=\"false\" fo:padding-top=\"0.1cm\" fo:padding-bottom=\"0.1cm\" fo:padding-left=\"0.1cm\" fo:padding-right=\"0.1cm\" draw:shadow=\"visible\" draw:shadow-offset-x=\"0.1cm\" draw:shadow-offset-y=\"0.1cm\"/><style:text-properties style:font-name=\"Arial\" fo:font-family=\"Arial\" style:font-family-generic=\"swiss\" style:font-pitch=\"variable\" fo:font-size=\"10pt\" style:font-name-asian=\"Andale Sans UI\" style:font-family-asian=\"&apos;Andale Sans UI&apos;\" style:font-family-generic-asian=\"system\" style:font-pitch-asian=\"variable\" style:font-size-asian=\"10pt\" style:font-name-complex=\"Tahoma\" style:font-family-complex=\"Tahoma\" style:font-family-generic-complex=\"system\" style:font-pitch-complex=\"variable\" style:font-size-complex=\"10pt\"/><\/style:style><number:number-style style:name=\"N0\"><number:number number:min-integer-digits=\"1\"/><\/number:number-style><number:currency-style style:name=\"N115P0\" style:volatile=\"true\"><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> <\/number:text><number:currency-symbol number:language=\"de\" number:country=\"DE\">\u20ac<\/number:currency-symbol><\/number:currency-style><number:currency-style style:name=\"N115\"><style:text-properties fo:color=\"#ff0000\"/><number:text>-<\/number:text><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> <\/number:text><number:currency-symbol number:language=\"de\" number:country=\"DE\">\u20ac<\/number:currency-symbol><style:map style:condition=\"value()&gt;=0\" style:apply-style-name=\"N115P0\"/><\/number:currency-style><number:currency-style style:name=\"N117P0\" style:volatile=\"true\"><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> <\/number:text><number:currency-symbol number:language=\"fr\" number:country=\"FR\">\u20ac<\/number:currency-symbol><\/number:currency-style><number:currency-style style:name=\"N117\"><style:text-properties fo:color=\"#ff0000\"/><number:text>-<\/number:text><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> <\/number:text><number:currency-symbol number:language=\"fr\" number:country=\"FR\">\u20ac<\/number:currency-symbol><style:map style:condition=\"value()&gt;=0\" style:apply-style-name=\"N117P0\"/><\/number:currency-style><number:number-style style:name=\"N119P0\" style:volatile=\"true\"><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> \u20ac<\/number:text><\/number:number-style><number:number-style style:name=\"N119\"><number:text>-<\/number:text><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> \u20ac<\/number:text><style:map style:condition=\"value()&gt;=0\" style:apply-style-name=\"N119P0\"/><\/number:number-style><number:number-style style:name=\"N120P0\" style:volatile=\"true\"><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> \u20ac<\/number:text><\/number:number-style><number:number-style style:name=\"N120\"><style:text-properties fo:color=\"#ff0000\"/><number:text>-<\/number:text><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> \u20ac<\/number:text><style:map style:condition=\"value()&gt;=0\" style:apply-style-name=\"N120P0\"/><\/number:number-style><number:number-style style:name=\"N122P0\" style:volatile=\"true\"><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> \u20ac<\/number:text><\/number:number-style><number:number-style style:name=\"N122\"><number:text>-<\/number:text><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> \u20ac<\/number:text><style:map style:condition=\"value()&gt;=0\" style:apply-style-name=\"N122P0\"/><\/number:number-style><number:number-style style:name=\"N123P0\" style:volatile=\"true\"><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> \u20ac<\/number:text><\/number:number-style><number:number-style style:name=\"N123\"><style:text-properties fo:color=\"#ff0000\"/><number:text>-<\/number:text><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> \u20ac<\/number:text><style:map style:condition=\"value()&gt;=0\" style:apply-style-name=\"N123P0\"/><\/number:number-style><number:number-style style:name=\"N124P0\" style:volatile=\"true\"><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><\/number:number-style><number:number-style style:name=\"N124\"><number:text>-<\/number:text><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><style:map style:condition=\"value()&gt;=0\" style:apply-style-name=\"N124P0\"/><\/number:number-style><number:number-style style:name=\"N125P0\" style:volatile=\"true\"><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><\/number:number-style><number:number-style style:name=\"N125\"><style:text-properties fo:color=\"#ff0000\"/><number:text>-<\/number:text><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><style:map style:condition=\"value()&gt;=0\" style:apply-style-name=\"N125P0\"/><\/number:number-style><number:number-style style:name=\"N126P0\" style:volatile=\"true\"><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><\/number:number-style><number:number-style style:name=\"N126\"><number:text>-<\/number:text><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><style:map style:condition=\"value()&gt;=0\" style:apply-style-name=\"N126P0\"/><\/number:number-style><number:number-style style:name=\"N127P0\" style:volatile=\"true\"><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><\/number:number-style><number:number-style style:name=\"N127\"><style:text-properties fo:color=\"#ff0000\"/><number:text>-<\/number:text><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><style:map style:condition=\"value()&gt;=0\" style:apply-style-name=\"N127P0\"/><\/number:number-style><number:number-style style:name=\"N131P0\" style:volatile=\"true\"><number:fill-character> <\/number:fill-character><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text>    <\/number:text><\/number:number-style><number:number-style style:name=\"N131P1\" style:volatile=\"true\"><number:text>-<\/number:text><number:fill-character> <\/number:fill-character><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text>    <\/number:text><\/number:number-style><number:number-style style:name=\"N131P2\" style:volatile=\"true\"><number:fill-character> <\/number:fill-character><number:text>-    <\/number:text><\/number:number-style><number:text-style style:name=\"N131\"><number:text-content/><number:text> <\/number:text><style:map style:condition=\"value()&gt;0\" style:apply-style-name=\"N131P0\"/><style:map style:condition=\"value()&lt;0\" style:apply-style-name=\"N131P1\"/><style:map style:condition=\"value()=0\" style:apply-style-name=\"N131P2\"/><\/number:text-style><number:number-style style:name=\"N135P0\" style:volatile=\"true\"><number:fill-character> <\/number:fill-character><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> \u20ac <\/number:text><\/number:number-style><number:number-style style:name=\"N135P1\" style:volatile=\"true\"><number:text>-<\/number:text><number:fill-character> <\/number:fill-character><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> \u20ac <\/number:text><\/number:number-style><number:number-style style:name=\"N135P2\" style:volatile=\"true\"><number:fill-character> <\/number:fill-character><number:text>- \u20ac <\/number:text><\/number:number-style><number:text-style style:name=\"N135\"><number:text-content/><number:text> <\/number:text><style:map style:condition=\"value()&gt;0\" style:apply-style-name=\"N135P0\"/><style:map style:condition=\"value()&lt;0\" style:apply-style-name=\"N135P1\"/><style:map style:condition=\"value()=0\" style:apply-style-name=\"N135P2\"/><\/number:text-style><number:number-style style:name=\"N139P0\" style:volatile=\"true\"><number:fill-character> <\/number:fill-character><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text>    <\/number:text><\/number:number-style><number:number-style style:name=\"N139P1\" style:volatile=\"true\"><number:text>-<\/number:text><number:fill-character> <\/number:fill-character><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text>    <\/number:text><\/number:number-style><number:number-style style:name=\"N139P2\" style:volatile=\"true\"><number:fill-character> <\/number:fill-character><number:text>-<\/number:text><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"0\"/><number:text>    <\/number:text><\/number:number-style><number:text-style style:name=\"N139\"><number:text-content/><number:text> <\/number:text><style:map style:condition=\"value()&gt;0\" style:apply-style-name=\"N139P0\"/><style:map style:condition=\"value()&lt;0\" style:apply-style-name=\"N139P1\"/><style:map style:condition=\"value()=0\" style:apply-style-name=\"N139P2\"/><\/number:text-style><number:number-style style:name=\"N143P0\" style:volatile=\"true\"><number:fill-character> <\/number:fill-character><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> \u20ac <\/number:text><\/number:number-style><number:number-style style:name=\"N143P1\" style:volatile=\"true\"><number:text>-<\/number:text><number:fill-character> <\/number:fill-character><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\" number:grouping=\"true\"/><number:text> \u20ac <\/number:text><\/number:number-style><number:number-style style:name=\"N143P2\" style:volatile=\"true\"><number:fill-character> <\/number:fill-character><number:text>-<\/number:text><number:number number:decimal-places=\"0\" number:min-decimal-places=\"0\" number:min-integer-digits=\"0\"/><number:text> \u20ac <\/number:text><\/number:number-style><number:text-style style:name=\"N143\"><number:text-content/><number:text> <\/number:text><style:map style:condition=\"value()&gt;0\" style:apply-style-name=\"N143P0\"/><style:map style:condition=\"value()&lt;0\" style:apply-style-name=\"N143P1\"/><style:map style:condition=\"value()=0\" style:apply-style-name=\"N143P2\"/><\/number:text-style><number:time-style style:name=\"N144\"><number:minutes number:style=\"long\"/><number:text>:<\/number:text><number:seconds number:style=\"long\"/><\/number:time-style><number:time-style style:name=\"N145\" number:truncate-on-overflow=\"false\"><number:hours/><number:text>:<\/number:text><number:minutes number:style=\"long\"/><number:text>:<\/number:text><number:seconds number:style=\"long\"/><\/number:time-style><number:time-style style:name=\"N146\"><number:minutes number:style=\"long\"/><number:text>:<\/number:text><number:seconds number:style=\"long\" number:decimal-places=\"1\"/><\/number:time-style><number:number-style style:name=\"N147\"><number:scientific-number number:decimal-places=\"1\" number:min-decimal-places=\"1\" number:min-integer-digits=\"1\" number:min-exponent-digits=\"1\" number:exponent-interval=\"3\" number:forced-exponent-sign=\"true\"/><\/number:number-style><number:time-style style:name=\"N149P0\" style:volatile=\"true\"><number:hours number:style=\"long\"/><number:text> h <\/number:text><number:minutes number:style=\"long\"/><\/number:time-style><number:text-style style:name=\"N149\"><number:text-content/><style:map style:condition=\"value()&lt;=1.7976931348623157E+308\" style:apply-style-name=\"N149P0\"/><\/number:text-style><number:time-style style:name=\"N150\"><number:hours/><number:text>:<\/number:text><number:minutes number:style=\"long\"/><\/number:time-style><style:style style:name=\"Default\" style:family=\"table-cell\"><style:text-properties fo:language=\"zxx\" fo:country=\"none\" style:language-asian=\"zxx\" style:country-asian=\"none\" style:language-complex=\"zxx\" style:country-complex=\"none\"/><\/style:style><style:style style:name=\"Heading\" style:family=\"table-cell\" style:parent-style-name=\"Default\"><style:table-cell-properties style:text-align-source=\"fix\" style:repeat-content=\"false\"/><style:paragraph-properties fo:text-align=\"center\"/><style:text-properties fo:font-size=\"16pt\" fo:font-style=\"italic\" fo:font-weight=\"bold\"/><\/style:style><style:style style:name=\"Heading_20_1\" style:display-name=\"Heading 1\" style:family=\"table-cell\" style:parent-style-name=\"Heading\"><style:table-cell-properties style:rotation-angle=\"90\"/><\/style:style><style:style style:name=\"Heading_20_2\" style:display-name=\"Heading 2\" style:family=\"table-cell\" style:parent-style-name=\"Heading\"><style:table-cell-properties fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><style:text-properties fo:font-size=\"12pt\" style:font-size-asian=\"12pt\" style:font-size-complex=\"12pt\"/><\/style:style><style:style style:name=\"Text\" style:family=\"table-cell\" style:parent-style-name=\"Default\"><style:table-cell-properties fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><\/style:style><style:style style:name=\"Note\" style:family=\"table-cell\" style:parent-style-name=\"Text\"><style:table-cell-properties fo:background-color=\"#ffffcc\" style:diagonal-bl-tr=\"none\" style:diagonal-tl-br=\"none\" fo:wrap-option=\"no-wrap\" fo:border=\"0.74pt solid #808080\" style:shrink-to-fit=\"false\"/><style:text-properties fo:color=\"#333333\"/><\/style:style><style:style style:name=\"Footnote\" style:family=\"table-cell\" style:parent-style-name=\"Text\"><style:table-cell-properties fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><style:text-properties fo:color=\"#808080\" fo:font-style=\"italic\" style:font-style-asian=\"italic\" style:font-style-complex=\"italic\"/><\/style:style><style:style style:name=\"Hyperlink\" style:family=\"table-cell\" style:parent-style-name=\"Text\"><style:table-cell-properties fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><style:text-properties fo:color=\"#0000ee\" style:text-underline-style=\"solid\" style:text-underline-width=\"auto\" style:text-underline-color=\"#0000ee\"/><\/style:style><style:style style:name=\"Status\" style:family=\"table-cell\" style:parent-style-name=\"Default\"><style:table-cell-properties fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><\/style:style><style:style style:name=\"Good\" style:family=\"table-cell\" style:parent-style-name=\"Status\"><style:table-cell-properties fo:background-color=\"#ccffcc\" fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><style:text-properties fo:color=\"#006600\"/><\/style:style><style:style style:name=\"Neutral\" style:family=\"table-cell\" style:parent-style-name=\"Status\"><style:table-cell-properties fo:background-color=\"#ffffcc\" fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><style:text-properties fo:color=\"#996600\"/><\/style:style><style:style style:name=\"Bad\" style:family=\"table-cell\" style:parent-style-name=\"Status\"><style:table-cell-properties fo:background-color=\"#ffcccc\" fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><style:text-properties fo:color=\"#cc0000\"/><\/style:style><style:style style:name=\"Warning\" style:family=\"table-cell\" style:parent-style-name=\"Status\"><style:table-cell-properties fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><style:text-properties fo:color=\"#cc0000\"/><\/style:style><style:style style:name=\"Error\" style:family=\"table-cell\" style:parent-style-name=\"Status\"><style:table-cell-properties fo:background-color=\"#cc0000\" fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><style:text-properties fo:color=\"#ffffff\" fo:font-weight=\"bold\" style:font-weight-asian=\"bold\" style:font-weight-complex=\"bold\"/><\/style:style><style:style style:name=\"Accent\" style:family=\"table-cell\" style:parent-style-name=\"Default\"><style:table-cell-properties fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><style:text-properties fo:font-weight=\"bold\" style:font-weight-asian=\"bold\" style:font-weight-complex=\"bold\"/><\/style:style><style:style style:name=\"Accent_20_1\" style:display-name=\"Accent 1\" style:family=\"table-cell\" style:parent-style-name=\"Accent\"><style:table-cell-properties fo:background-color=\"#000000\" fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><style:text-properties fo:color=\"#ffffff\"/><\/style:style><style:style style:name=\"Accent_20_2\" style:display-name=\"Accent 2\" style:family=\"table-cell\" style:parent-style-name=\"Accent\"><style:table-cell-properties fo:background-color=\"#808080\" fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><style:text-properties fo:color=\"#ffffff\"/><\/style:style><style:style style:name=\"Accent_20_3\" style:display-name=\"Accent 3\" style:family=\"table-cell\" style:parent-style-name=\"Accent\"><style:table-cell-properties fo:background-color=\"#dddddd\" fo:wrap-option=\"no-wrap\" style:shrink-to-fit=\"false\"/><\/style:style><style:style style:name=\"Result\" style:family=\"table-cell\" style:parent-style-name=\"Default\"><style:text-properties fo:font-style=\"italic\" style:text-underline-style=\"solid\" style:text-underline-width=\"auto\" style:text-underline-color=\"font-color\" fo:font-weight=\"bold\"/><\/style:style><style:style style:name=\"Result2\" style:family=\"table-cell\" style:parent-style-name=\"Result\" style:data-style-name=\"N115\"/><draw:marker draw:name=\"Extr\u00e9mit\u00e9s_20_de_20_fl\u00e8che_20_1\" draw:display-name=\"Extr\u00e9mit\u00e9s de fl\u00e8che 1\" svg:viewBox=\"0 0 20 30\" svg:d=\"M10 0l-10 30h20z\"/><\/office:styles><office:automatic-styles><number:number-style style:name=\"N2\"><number:number number:decimal-places=\"2\" number:min-decimal-places=\"2\" number:min-integer-digits=\"1\"/><\/number:number-style><style:page-layout style:name=\"Mpm1\"><style:page-layout-properties style:writing-mode=\"lr-tb\"/><style:header-style><style:header-footer-properties fo:min-height=\"0.751cm\" fo:margin-left=\"0cm\" fo:margin-right=\"0cm\" fo:margin-bottom=\"0.25cm\"/><\/style:header-style><style:footer-style><style:header-footer-properties fo:min-height=\"0.751cm\" fo:margin-left=\"0cm\" fo:margin-right=\"0cm\" fo:margin-top=\"0.25cm\"/><\/style:footer-style><\/style:page-layout><style:page-layout style:name=\"Mpm2\"><style:page-layout-properties style:writing-mode=\"lr-tb\"/><style:header-style><style:header-footer-properties fo:min-height=\"0.751cm\" fo:margin-left=\"0cm\" fo:margin-right=\"0cm\" fo:margin-bottom=\"0.25cm\" fo:border=\"2.49pt solid #000000\" fo:padding=\"0.018cm\" fo:background-color=\"#c0c0c0\"><style:background-image/><\/style:header-footer-properties><\/style:header-style><style:footer-style><style:header-footer-properties fo:min-height=\"0.751cm\" fo:margin-left=\"0cm\" fo:margin-right=\"0cm\" fo:margin-top=\"0.25cm\" fo:border=\"2.49pt solid #000000\" fo:padding=\"0.018cm\" fo:background-color=\"#c0c0c0\"><style:background-image/><\/style:header-footer-properties><\/style:footer-style><\/style:page-layout><\/office:automatic-styles><office:master-styles><style:master-page style:name=\"Default\" style:page-layout-name=\"Mpm1\"><style:header><text:p><text:sheet-name>???<\/text:sheet-name><\/text:p><\/style:header><style:header-left style:display=\"false\"/><style:header-first style:display=\"false\"/><style:footer><text:p>Page <text:page-number>1<\/text:page-number><\/text:p><\/style:footer><style:footer-left style:display=\"false\"/><style:footer-first style:display=\"false\"/><\/style:master-page><style:master-page style:name=\"Report\" style:page-layout-name=\"Mpm2\"><style:header><style:region-left><text:p><text:sheet-name>???<\/text:sheet-name><text:s/>(<text:title>???<\/text:title>)<\/text:p><\/style:region-left><style:region-right><text:p><text:date style:data-style-name=\"N2\" text:date-value=\"2026-10-29\">00/00/0000<\/text:date>, <text:time style:data-style-name=\"N2\" text:time-value=\"17:18:29.483000000\">00:00:00<\/text:time><\/text:p><\/style:region-right><\/style:header><style:header-left style:display=\"false\"/><style:header-first style:display=\"false\"/><style:footer><text:p>Page <text:page-number>1<\/text:page-number><text:s/>/ <text:page-count>99<\/text:page-count><\/text:p><\/style:footer><style:footer-left style:display=\"false\"/><style:footer-first style:display=\"false\"/><\/style:master-page><\/office:master-styles><\/office:document-styles>", "meta.xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<office:document-meta xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" xmlns:ooo=\"http://openoffice.org/2004/office\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:meta=\"urn:oasis:names:tc:opendocument:xmlns:meta:1.0\" xmlns:grddl=\"http://www.w3.org/2003/g/data-view#\" office:version=\"1.3\"><office:meta><meta:creation-date>2009-04-16T11:32:48.39<\/meta:creation-date><meta:editing-duration>PT48M36S<\/meta:editing-duration><meta:editing-cycles>28<\/meta:editing-cycles><meta:generator>LibreOffice/7.6.5.2$Windows_X86_64 LibreOffice_project/38d5f62f85355c192ef5f1dd47c5c0c0c6d6598b<\/meta:generator><dc:date>2026-10-29T17:18:52.249000000<\/dc:date><meta:document-statistic meta:table-count=\"3\" meta:cell-count=\"129\" meta:object-count=\"0\"/><meta:user-defined meta:name=\"Info 1\"/><meta:user-defined meta:name=\"Info 2\"/><meta:user-defined meta:name=\"Info 3\"/><meta:user-defined meta:name=\"Info 4\"/><\/office:meta><\/office:document-meta>", "settings.xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<office:document-settings xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" xmlns:ooo=\"http://openoffice.org/2004/office\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:config=\"urn:oasis:names:tc:opendocument:xmlns:config:1.0\" office:version=\"1.3\"><office:settings><config:config-item-set config:name=\"ooo:view-settings\"><config:config-item config:name=\"VisibleAreaTop\" config:type=\"int\">0<\/config:config-item><config:config-item config:name=\"VisibleAreaLeft\" config:type=\"int\">0<\/config:config-item><config:config-item config:name=\"VisibleAreaWidth\" config:type=\"int\">13555<\/config:config-item><config:config-item config:name=\"VisibleAreaHeight\" config:type=\"int\">19509<\/config:config-item><config:config-item-map-indexed config:name=\"Views\"><config:config-item-map-entry><config:config-item config:name=\"ViewId\" config:type=\"string\">view1<\/config:config-item><config:config-item-map-named config:name=\"Tables\"><config:config-item-map-entry config:name=\"Sheet1\"><config:config-item config:name=\"CursorPositionX\" config:type=\"int\">6<\/config:config-item><config:config-item config:name=\"CursorPositionY\" config:type=\"int\">30<\/config:config-item><config:config-item config:name=\"ActiveSplitRange\" config:type=\"short\">2<\/config:config-item><config:config-item config:name=\"PositionLeft\" config:type=\"int\">0<\/config:config-item><config:config-item config:name=\"PositionRight\" config:type=\"int\">0<\/config:config-item><config:config-item config:name=\"PositionTop\" config:type=\"int\">0<\/config:config-item><config:config-item config:name=\"PositionBottom\" config:type=\"int\">6<\/config:config-item><config:config-item config:name=\"ZoomType\" config:type=\"short\">0<\/config:config-item><config:config-item config:name=\"ZoomValue\" config:type=\"int\">100<\/config:config-item><config:config-item config:name=\"PageViewZoomValue\" config:type=\"int\">60<\/config:config-item><config:config-item config:name=\"ShowGrid\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"AnchoredTextOverflowLegacy\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"LegacySingleLineFontwork\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"ConnectorUseSnapRect\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"IgnoreBreakAfterMultilineField\" config:type=\"boolean\">false<\/config:config-item><\/config:config-item-map-entry><\/config:config-item-map-named><config:config-item config:name=\"ActiveTable\" config:type=\"string\">Sheet1<\/config:config-item><config:config-item config:name=\"HorizontalScrollbarWidth\" config:type=\"int\">1839<\/config:config-item><config:config-item config:name=\"ZoomType\" config:type=\"short\">0<\/config:config-item><config:config-item config:name=\"ZoomValue\" config:type=\"int\">100<\/config:config-item><config:config-item config:name=\"PageViewZoomValue\" config:type=\"int\">60<\/config:config-item><config:config-item config:name=\"ShowPageBreakPreview\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"ShowZeroValues\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"ShowNotes\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"ShowFormulasMarks\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"ShowGrid\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"GridColor\" config:type=\"int\">12632256<\/config:config-item><config:config-item config:name=\"ShowPageBreaks\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"FormulaBarHeight\" config:type=\"short\">1<\/config:config-item><config:config-item config:name=\"HasSheetTabs\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"IsOutlineSymbolsSet\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"IsValueHighlightingEnabled\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"IsSnapToRaster\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"RasterIsVisible\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"RasterResolutionX\" config:type=\"int\">1000<\/config:config-item><config:config-item config:name=\"RasterResolutionY\" config:type=\"int\">1000<\/config:config-item><config:config-item config:name=\"RasterSubdivisionX\" config:type=\"int\">1<\/config:config-item><config:config-item config:name=\"RasterSubdivisionY\" config:type=\"int\">1<\/config:config-item><config:config-item config:name=\"IsRasterAxisSynchronized\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"AnchoredTextOverflowLegacy\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"LegacySingleLineFontwork\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"ConnectorUseSnapRect\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"IgnoreBreakAfterMultilineField\" config:type=\"boolean\">false<\/config:config-item><\/config:config-item-map-entry><\/config:config-item-map-indexed><\/config:config-item-set><config:config-item-set config:name=\"ooo:configuration-settings\"><config:config-item config:name=\"AllowPrintJobCancel\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"ApplyUserData\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"AutoCalculate\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"CharacterCompressionType\" config:type=\"short\">0<\/config:config-item><config:config-item config:name=\"EmbedAsianScriptFonts\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"EmbedComplexScriptFonts\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"EmbedFonts\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"EmbedLatinScriptFonts\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"EmbedOnlyUsedFonts\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"GridColor\" config:type=\"int\">12632256<\/config:config-item><config:config-item config:name=\"HasColumnRowHeaders\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"HasSheetTabs\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"ImagePreferredDPI\" config:type=\"int\">0<\/config:config-item><config:config-item config:name=\"IsDocumentShared\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"IsKernAsianPunctuation\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"IsOutlineSymbolsSet\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"IsRasterAxisSynchronized\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"IsSnapToRaster\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"LinkUpdateMode\" config:type=\"short\">3<\/config:config-item><config:config-item config:name=\"LoadReadonly\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"PrinterName\" config:type=\"string\">Canon Generic Plus PCL6<\/config:config-item><config:config-item config:name=\"PrinterPaperFromSetup\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"PrinterSetup\" config:type=\"base64Binary\">pxb+/0Nhbm9uIEdlbmVyaWMgUGx1cyBQQ0w2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ2Fub24gR2VuZXJpYyBQbHVzIFBDTDYAAAAAAAAAAAAWAAEAdhUAAAAAAAAEAAhSAAAEdAAAM1ROVwAAAAAKAEMAYQBuAG8AbgAgAEcAZQBuAGUAcgBpAGMAIABQAGwAdQBzACAAUABDAEwANgAAAAAAAAAAAAAAAAAAAAAAAAABBCgD3ACQFAPfAQABAAkAmgs0CGQAAQAHAFgCAgACAAAABAABAEEANAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAIAAAABAAAAAgAAAAAAAAAAAAAAAAAAAAAAAABDYW5vbgAAAOAXAAAAAAAAAAEAAAEAAAAFBgAA/QRpCwACDASKE0MAYQBuAG8AbgAgAEcAZQBuAGUAcgBpAGMAIABQAGwAdQBzACAAUABDAEwANgAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAD/BwAAswOkAgAAAWQBAwIBAwMEAgUCBmQBAQIBAw8EEAUGAAdkAQECAQMPBBAFBgAIAwkBCgELAgwCDQIOAg8DAApkAQECAgMCBAIFAgYCBwIIAglkAQMCAgMCBAEACmQBAgIBAwEEAQUKBmQBBwIHAwcEAgUIIAAAAAtkAQECAgMCBAIFAgYCBwIIAgAUZAENAggAAAMIAAAECAAABSAGIAcgAA1kAQMCAgQCBQIGAgcBAA5kAQMCAgMCBAIFAQYEgAcEQAgEQAAPZAEDAgggAwggBGQBBwIHAwcEAgUIIAAFCgYOBwEIAwAQZAEDAgIDAQQBBQEGAQcBCAgSCQIAEWQBAQASZAEIIAIDABNkAQICBCIDCCIAZWQBZAFkAQMCAgMCBAIFAgYCBwEIAgkCCgILAgwDDQEOAQ8DEAIRARIBEwEUAhUCFgIXAhgDGQIaAhsCHAIdAh4CHwIgAiECIgIjAiQCJQImAicCKAIpAioCKwEsAS0BLgEvATABMQEyATMBNAE1ATYBNwI4ATkCOgI7AjwCPQI+Aj8CQAJBAUICQwFECIBFAkYCRwJIAkkCSgJLAkwCTQJOAk8CUAIAAmQBAwIGAwIEAgUEIgYCBwIIAgkECgQLAgwEQA0DDgMPARABEQMSAhMCFAEVAhYCFwIYAhkCGgIbBBwEHQQeBB8GIAIhASIBIwEkAiUCJgInASgBKQEqASsBLAItZC5kL2QwAjEBMgEzATQBNQE2ATcBOAI5AjoCOwM8AT0BPgE/AUABQQFCAkMBRAJFBkYCRwJIAkkCSgRLAkwCTQJOAk8CUAJRAlIIIlMCVAJVAlYCVwJYAlkCWgj/AVsCXAJdAl4CXwFgAWEDYgJjCCAAA2QBAwIBAwEEAQUBBgEHAQgBCQEKAQsBDAENAQ4BDwEQAREBEgETARQGFQYWBhcGGAcZBxoBGwEcAR0BHgEfA2QgAiEBIgEjASQBFCUBFCYBFCcBFAAEZAEIIQIIEQMIgQAFZAEDAgIDAQYBBwEABmQBAgICAwgQBAgQAAdkAQECAwMDBAMFAwYCBwIIAQAIZAEBAgEDAQQDBQghBgYHBggGCQYKBgsGDAYNBg4CDwMQAhECEgYTAwAJZAECAgINAwIECBkACmQBAQIGAwYAAAJkAWQBAwIBAwMEAwUBBgIHAggBCQIKAgsBDAEAAmQBAgIDAwgQBAgQBQIGAQcBCAEJAQoBCwEMAR4NAR4AA2QBAwIDAwhBAARkAQECAQMBBAEFAQYBBwEIAQAAAABDOAAgAQABQAQAAAAJAAkANAgAAJoLAAA8AAAAKgAAAPgHAABwCwAAMYUJAAkANAgAAJoLAAA8AAAAKgAAAPgHAABwCwAAMYVBXoIAWAKwBAIAGBgBAAAAZAAAAAAABAAABAAAAB4AZAABAQABAAEAAAAAAAsAAAAAAAAAkAEAAABBAHIAaQBhAGwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwABAAABAgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH8AAE5vbmUAMTUuSUNDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfwAATm9uZQAxNS5JQ0MAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB/AABOb25lADE1LklDQwAAAAAAAAAAAgEBAQECAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAD//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACSAAAAQwBPAE4ARgBJAEQARQBOAFQASQBFAEwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEMATwBOAEYASQBEAEUATgBUAEkARQBMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABIAAAAAAAAAJABAAAAQQByAGkAYQBsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAICAgAAAAAAAAAAAAMIBAQAAAAAAAAAABwAHAAcABAAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAYQByAGEAbQDoAHQAcgBlAHMAIABwAGEAcgAgAGQA6QBmAGEAdQB0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAQAYGFgCAgwAAAECggAHAAcAAAAAAAD7//v/+/8AAMgBAAAAAAAFAAcAAAACAAAJCQkJAAFkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQFkZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAQAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwACAAEAAAAAABQAAAAAAAAAAAAAAAEAAAAACAABAAAAAAkACQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAUAAgBAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAN4DCQAAAAAAAEEAcgBpAGEAbAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAgAAAAIAAAACAAAAAAAAAAQAAAABAAAAAgAAAAIAAAAEAAAAAAB/AAAAfwAAAAAAAAABAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAACQAJAAcABAABAAMAAgAIAQkBCgELAQwBDQEPASMBJAElASYBJwEoASkBKgEWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAACAAAAAQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAP8A/wAAAAAAAAAAAAAAAQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABIAQ09NUEFUX0RVUExFWF9NT0RFFABEdXBsZXhNb2RlOjpMb25nRWRnZQwAUFJJTlRFUl9OQU1FFwBDYW5vbiBHZW5lcmljIFBsdXMgUENMNgsARFJJVkVSX05BTUUXAENhbm9uIEdlbmVyaWMgUGx1cyBQQ0w2<\/config:config-item><config:config-item config:name=\"RasterIsVisible\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"RasterResolutionX\" config:type=\"int\">1000<\/config:config-item><config:config-item config:name=\"RasterResolutionY\" config:type=\"int\">1000<\/config:config-item><config:config-item config:name=\"RasterSubdivisionX\" config:type=\"int\">1<\/config:config-item><config:config-item config:name=\"RasterSubdivisionY\" config:type=\"int\">1<\/config:config-item><config:config-item config:name=\"SaveThumbnail\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"SaveVersionOnClose\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"ShowFormulasMarks\" config:type=\"boolean\">false<\/config:config-item><config:config-item config:name=\"ShowGrid\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"ShowNotes\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"ShowPageBreaks\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"ShowZeroValues\" config:type=\"boolean\">true<\/config:config-item><config:config-item config:name=\"SyntaxStringRef\" config:type=\"short\">7<\/config:config-item><config:config-item config:name=\"UpdateFromTemplate\" config:type=\"boolean\">true<\/config:config-item><config:config-item-map-named config:name=\"ScriptConfiguration\"><config:config-item-map-entry config:name=\"Sheet1\"><config:config-item config:name=\"CodeName\" config:type=\"string\">Feuille1<\/config:config-item><\/config:config-item-map-entry><config:config-item-map-entry config:name=\"Sheet2\"><config:config-item config:name=\"CodeName\" config:type=\"string\">Sheet2<\/config:config-item><\/config:config-item-map-entry><config:config-item-map-entry config:name=\"Sheet3\"><config:config-item config:name=\"CodeName\" config:type=\"string\">Sheet3<\/config:config-item><\/config:config-item-map-entry><\/config:config-item-map-named><\/config:config-item-set><\/office:settings><\/office:document-settings>", "manifest.rdf": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n  <rdf:Description rdf:about=\"styles.xml\">\n    <rdf:type rdf:resource=\"http://docs.oasis-open.org/ns/office/1.2/meta/odf#StylesFile\"/>\n  <\/rdf:Description>\n  <rdf:Description rdf:about=\"\">\n    <ns0:hasPart xmlns:ns0=\"http://docs.oasis-open.org/ns/office/1.2/meta/pkg#\" rdf:resource=\"styles.xml\"/>\n  <\/rdf:Description>\n  <rdf:Description rdf:about=\"content.xml\">\n    <rdf:type rdf:resource=\"http://docs.oasis-open.org/ns/office/1.2/meta/odf#ContentFile\"/>\n  <\/rdf:Description>\n  <rdf:Description rdf:about=\"\">\n    <ns0:hasPart xmlns:ns0=\"http://docs.oasis-open.org/ns/office/1.2/meta/pkg#\" rdf:resource=\"content.xml\"/>\n  <\/rdf:Description>\n  <rdf:Description rdf:about=\"\">\n    <rdf:type rdf:resource=\"http://docs.oasis-open.org/ns/office/1.2/meta/pkg#Document\"/>\n  <\/rdf:Description>\n<\/rdf:RDF>\n", "META-INF/manifest.xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<manifest:manifest xmlns:manifest=\"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0\" manifest:version=\"1.3\" xmlns:loext=\"urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0\">\n <manifest:file-entry manifest:full-path=\"/\" manifest:version=\"1.3\" manifest:media-type=\"application/vnd.oasis.opendocument.spreadsheet\"/>\n <manifest:file-entry manifest:full-path=\"manifest.rdf\" manifest:media-type=\"application/rdf+xml\"/>\n <manifest:file-entry manifest:full-path=\"styles.xml\" manifest:media-type=\"text/xml\"/>\n <manifest:file-entry manifest:full-path=\"meta.xml\" manifest:media-type=\"text/xml\"/>\n <manifest:file-entry manifest:full-path=\"content.xml\" manifest:media-type=\"text/xml\"/>\n <manifest:file-entry manifest:full-path=\"settings.xml\" manifest:media-type=\"text/xml\"/>\n<\/manifest:manifest>"};
+const I18N = {
+  de: {
+    title: "Timesheet-Generator",
+    pdfDone: "Druckdialog: „Als PDF speichern“ wählen", dlDone: "Heruntergeladen", change: "Andere Datei", how: "So wird gerechnet", loaded: "Monate im Export", foot: "Läuft komplett lokal im Browser – keine Daten verlassen diesen PC.",
+    r1: "Die Schicht (08:00, 09:00 oder 10:00) wird aus dem Eintritt erkannt und kann pro Tag geändert werden.",
+    r2: "Zeit vor Schichtbeginn zählt nicht als Overtime.",
+    r3: "Overtime zählt erst nach Schichtende (17/18/19 Uhr) und nur in vollen 15 Minuten.",
+    r4: "Zu spät kommen oder früher gehen wird minutengenau abgezogen. Wochenendtage zählen wie normale Schichten.",
+    r5: "Werktage ohne Badge: Status wählen (CONGE, recup, Krank, Feiertag). Luxemburger Feiertage werden automatisch eingetragen.",
+    tDays: "Arbeitstage", tOt: "Overtime", tOpen: "offene Tage", tDone: "fertig ✓", saved: "Einträge werden in diesem Browser gespeichert.", reset: "Einträge dieses Monats zurücksetzen", resetQ: "Alle Einträge für diesen Monat löschen?",
+    status: "Status / Hinweis", auto: "Auto", none: "—",
+    st: { CONGE: "CONGE", recup: "recup", MALADIE: "Krank", FERIE: "Feiertag" },
+    hol: { newyear: "Neujahr", eastermon: "Ostermontag", labour: "Tag der Arbeit", europe: "Europatag", ascension: "Christi Himmelfahrt", whitmon: "Pfingstmontag", national: "Nationalfeiertag", assumption: "Mariä Himmelfahrt", allsaints: "Allerheiligen", xmas: "Weihnachten", stephen: "Stephanstag" },
+    rules2: "Gelbe Tage: Status rechts auswählen (CONGE, recup, Krank, Feiertag). Luxemburger Feiertage werden automatisch eingetragen. Schicht pro Tag änderbar, falls die Erkennung falsch liegt.",
+    sub: "Badge-Export (Pointages-CSV) reinziehen, Monat wählen, Timesheet als .ods herunterladen. Alles läuft lokal im Browser.",
+    rules: "Regeln: Schicht 8/9/10 Uhr wird aus dem Eintritt erkannt · Zeit vor Schichtbeginn zählt nicht · Overtime erst nach Schichtende, nur volle 15 Min · zu spät / früher gehen wird abgezogen.",
+    drop: "CSV hier ablegen", click: "oder klicken zum Auswählen",
+    month: "Monat", name: "Name", shiftLen: "Schicht inkl. Pause", download: "Herunterladen",
+    day: "Tag", shift: "Schicht", start: "Start", end: "Ende",
+    days: "Arbeitstage", total: "Overtime gesamt", fill: "Selbst eintragen (CONGE / recup …)",
+    nobadge: "kein Badge", incomplete: "Badge unvollständig", noData: "Keine Badge-Einträge in der Datei gefunden.",
+    months: ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"],
+    wd: { Mon: "Mo", Tue: "Di", Wed: "Mi", Thu: "Do", Fri: "Fr", Sat: "Sa", Sun: "So" }
+  },
+  fr: {
+    title: "Générateur de timesheet",
+    pdfDone: "Dans l’impression : « Enregistrer au format PDF »", dlDone: "Téléchargé", change: "Autre fichier", how: "Méthode de calcul", loaded: "mois dans l’export", foot: "Fonctionne entièrement en local – aucune donnée ne quitte ce PC.",
+    r1: "L’horaire (08h00, 09h00 ou 10h00) est détecté à l’entrée et peut être modifié par jour.",
+    r2: "Le temps avant le début de l’horaire ne compte pas en heures sup.",
+    r3: "Les heures sup. comptent seulement après la fin de l’horaire (17h/18h/19h), par tranches complètes de 15 minutes.",
+    r4: "Un retard ou un départ anticipé est déduit à la minute près. Le week-end compte comme un horaire normal.",
+    r5: "Jours ouvrés sans pointage : choisir le statut (CONGE, récup, maladie, férié). Les jours fériés luxembourgeois sont remplis automatiquement.",
+    tDays: "jours travaillés", tOt: "Heures sup.", tOpen: "jours à compléter", tDone: "complet ✓", saved: "Les saisies sont enregistrées dans ce navigateur.", reset: "Réinitialiser ce mois", resetQ: "Supprimer toutes les saisies de ce mois ?",
+    status: "Statut / remarque", auto: "Auto", none: "—",
+    st: { CONGE: "CONGE", recup: "récup", MALADIE: "Maladie", FERIE: "Jour férié" },
+    hol: { newyear: "Jour de l’An", eastermon: "Lundi de Pâques", labour: "Fête du Travail", europe: "Journée de l’Europe", ascension: "Ascension", whitmon: "Lundi de Pentecôte", national: "Fête nationale", assumption: "Assomption", allsaints: "Toussaint", xmas: "Noël", stephen: "Saint-Étienne" },
+    rules2: "Jours en jaune : choisissez le statut à droite (CONGE, récup, maladie, férié). Les jours fériés luxembourgeois sont remplis automatiquement. L’horaire peut être changé par jour si la détection se trompe.",
+    sub: "Déposez l’export des pointages (CSV), choisissez le mois et téléchargez la timesheet en .ods. Tout reste en local dans le navigateur.",
+    rules: "Règles : horaire 8h/9h/10h détecté à l’entrée · le temps avant le début de l’horaire ne compte pas · heures sup. seulement après la fin de l’horaire, par tranches complètes de 15 min · retard / départ anticipé déduit.",
+    drop: "Déposez le CSV ici", click: "ou cliquez pour choisir",
+    month: "Mois", name: "Nom", shiftLen: "Horaire, pause incl.", download: "Télécharger",
+    day: "Jour", shift: "Horaire", start: "Début", end: "Fin",
+    days: "jours travaillés", total: "Heures sup. totales", fill: "À compléter (CONGE / récup …)",
+    nobadge: "pas de pointage", incomplete: "pointage incomplet", noData: "Aucun pointage trouvé dans le fichier.",
+    months: ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"],
+    wd: { Mon: "lun", Tue: "mar", Wed: "mer", Thu: "jeu", Fri: "ven", Sat: "sam", Sun: "dim" }
+  },
+  en: {
+    title: "Timesheet generator",
+    pdfDone: "In the print dialog: “Save as PDF”", dlDone: "Downloaded", change: "Other file", how: "How it is calculated", loaded: "months in export", foot: "Runs entirely in your browser – no data leaves this PC.",
+    r1: "The shift (08:00, 09:00 or 10:00) is detected from badge-in and can be changed per day.",
+    r2: "Time before shift start does not count as overtime.",
+    r3: "Overtime only counts after shift end (5/6/7 pm) and only in full 15-minute blocks.",
+    r4: "Late arrival or early leave is deducted to the minute. Weekend days count as normal shifts.",
+    r5: "Weekdays without badge: pick a status (CONGE, recup, sick, holiday). Luxembourg public holidays are filled in automatically.",
+    tDays: "working days", tOt: "Overtime", tOpen: "days to fill", tDone: "complete ✓", saved: "Entries are saved in this browser.", reset: "Reset this month", resetQ: "Delete all entries for this month?",
+    status: "Status / note", auto: "Auto", none: "—",
+    st: { CONGE: "CONGE", recup: "recup", MALADIE: "Sick", FERIE: "Holiday" },
+    hol: { newyear: "New Year", eastermon: "Easter Monday", labour: "Labour Day", europe: "Europe Day", ascension: "Ascension Day", whitmon: "Whit Monday", national: "National Day", assumption: "Assumption Day", allsaints: "All Saints’ Day", xmas: "Christmas", stephen: "St Stephen’s Day" },
+    rules2: "Yellow days: pick a status on the right (CONGE, recup, sick, holiday). Luxembourg public holidays are filled in automatically. Shift can be changed per day if detection is wrong.",
+    sub: "Drop the badge export (Pointages CSV), pick the month, download the timesheet as .ods. Everything runs locally in your browser.",
+    rules: "Rules: 8/9/10 am shift detected from badge-in · time before shift start doesn’t count · overtime only after shift end, in full 15-min blocks · late arrival / early leave is deducted.",
+    drop: "Drop CSV here", click: "or click to choose",
+    month: "Month", name: "Name", shiftLen: "Shift incl. break", download: "Download",
+    day: "Day", shift: "Shift", start: "Start", end: "End",
+    days: "working days", total: "Total overtime", fill: "Fill in yourself (CONGE / recup …)",
+    nobadge: "no badge", incomplete: "badge incomplete", noData: "No badge entries found in the file.",
+    months: ["January","February","March","April","May","June","July","August","September","October","November","December"],
+    wd: { Mon: "Mon", Tue: "Tue", Wed: "Wed", Thu: "Thu", Fri: "Fri", Sat: "Sat", Sun: "Sun" }
+  }
+};
+let lang = "de";
+try { lang = localStorage.getItem("ts-lang") || ""; } catch {}
+if (!I18N[lang]) lang = (navigator.language || "de").slice(0, 2);
+if (!I18N[lang]) lang = "de";
+const T = k => I18N[lang][k];
+
+let badges = null, last = null, months = [];
+let OV = {}; // overrides pro Monat: OV["2026-10"][day] = {status, shift} – lokal gespeichert
+try { OV = JSON.parse(localStorage.getItem("ts-ov") || "{}") || {}; } catch { OV = {}; }
+const saveOV = () => { try { localStorage.setItem("ts-ov", JSON.stringify(OV)); return true; } catch { return false; } };
+const $ = id => document.getElementById(id);
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function moveThumb() {
+  for (const id of ["lang", "fmt"]) {
+    const on = document.querySelector(`#${id} button.on`), th = document.querySelector(`#${id} .thumb`);
+    if (!on || !th || !on.offsetWidth) continue;
+    th.style.width = on.offsetWidth + "px";
+    th.style.transform = `translateX(${on.offsetLeft}px)`;
+  }
+}
+let fmt = "ods";
+try { fmt = localStorage.getItem("ts-fmt") || "ods"; } catch {}
+if (!["ods", "xlsx", "pdf"].includes(fmt)) fmt = "ods";
+function setFmt(f) {
+  fmt = f;
+  try { localStorage.setItem("ts-fmt", f); } catch {}
+  document.querySelectorAll("#fmt button").forEach(b => b.classList.toggle("on", b.dataset.f === f));
+  moveThumb();
+}
+function countUp(el, to, fmt) {
+  const from = el._v ?? 0; el._v = to;
+  if (reduce || from === to) { el.textContent = fmt(to); return; }
+  const t0 = performance.now(), dur = 700;
+  cancelAnimationFrame(el._raf);
+  const step = t => {
+    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 4);
+    el.textContent = fmt(Math.round(from + (to - from) * e));
+    if (k < 1) el._raf = requestAnimationFrame(step);
+  };
+  el._raf = requestAnimationFrame(step);
+}
+function swapText(el, txt) {
+  if (el.textContent === txt) return;
+  el.textContent = txt; el.classList.remove("fade-swap"); void el.offsetWidth; el.classList.add("fade-swap");
+}
+let prevOpen = null, animRows = false, flashDay = null;
+
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.title = T("title");
+  document.querySelectorAll("[data-t]").forEach(el => {
+    el.textContent = T(el.dataset.t);
+  });
+  document.querySelectorAll("#lang button").forEach(b => b.classList.toggle("on", b.dataset.l === lang));
+  moveThumb();
+  if (badges) { fillMonths(); render(); }
+}
+
+function fillMonths() {
+  const cur = $("month").value;
+  $("month").innerHTML = months.map(k => `<option value="${k}">${T("months")[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join("");
+  if (cur) $("month").value = cur;
+}
+
+function decode(buf) {
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(buf); }
+  catch { return new TextDecoder("windows-1252").decode(buf); }
+}
+
+async function load(file) {
+  const b = parseBadges(decode(await file.arrayBuffer()));
+  months = monthsIn(b.days);
+  if (!months.length) { alert(T("noData")); return; }
+  badges = b; badges.file = file.name;
+  const now = new Date(), prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+  $("month").innerHTML = "";
+  fillMonths();
+  $("month").value = months.includes(prevKey) ? prevKey : months[months.length - 1];
+  $("name").value = badges.name || "";
+  $("fileName").textContent = file.name;
+  $("fileWho").textContent = (badges.name || "") + " · " + months.length + " " + T("loaded");
+  $("drop").classList.add("hidden"); $("fileCard").classList.remove("hidden");
+  $("ui").classList.remove("hidden");
+  [$("fileCard"), document.querySelector(".controls"), ...document.querySelectorAll(".tile"), $("sum"), document.querySelector(".tablecard")]
+    .forEach((el, i) => { el.classList.remove("enter"); void el.offsetWidth; el.style.setProperty("--d", i * 70 + "ms"); el.classList.add("enter"); });
+  prevOpen = null; animRows = true;
+  render();
+  setFmt(fmt); setTimeout(moveThumb, 50);
+}
+
+function render() {
+  const key = $("month").value, [y, m] = key.split("-").map(Number);
+  const ov = OV[key] || (OV[key] = {});
+  last = { y, m, r: buildContent(TPL["content.xml"], badges, y, m, $("name").value, parseFloat($("hours").value) || 9, { incompleteLabel: T("incomplete"), overrides: ov }) };
+  const r = last.r, wd = x => T("wd")[x];
+  countUp($("tDays"), r.worked, String);
+  countUp($("tOt"), r.total, hm);
+  const open = r.missing.length;
+  countUp($("tOpen"), open, String);
+  swapText($("tOpenL"), open ? T("tOpen") : T("tDone"));
+  const box = $("tOpenBox");
+  box.classList.toggle("open", !!open); box.classList.toggle("done", !open);
+  if (prevOpen > 0 && open === 0 && !reduce) { box.classList.remove("celebrate"); void box.offsetWidth; box.classList.add("celebrate"); }
+  prevOpen = open;
+  $("sum").textContent = open ? `${T("fill")}: ${r.missing.map(x => x.day + ". " + wd(x.wd) + (x.kind === "incomplete" ? ` (${T("incomplete")})` : "")).join(", ")}` : "";
+  $("tblTitle").textContent = T("months")[m - 1] + " " + y;
+  if (badges) $("fileWho").textContent = (badges.name || "") + " · " + months.length + " " + T("loaded");
+  $("saved").textContent = Object.keys(ov).length ? T("saved") : "";
+  const shiftSel = x => `<select data-day="${x.day}" data-k="shift" class="${x.shiftSel ? "set" : ""}">` +
+    `<option value="0">${T("auto")} (${hm(x.shiftAuto)})</option>` +
+    [480, 540, 600].map(v => `<option value="${v}"${x.shiftSel === v ? " selected" : ""}>${hm(v)}–${hm(v + Math.round((parseFloat($("hours").value) || 9) * 60))}</option>`).join("") + "</select>";
+  const statusSel = x => `<select data-day="${x.day}" data-k="status" class="st-${x.status}${x.status !== x.autoStatus ? " set" : ""}">` +
+    ["none", "CONGE", "recup", "MALADIE", "FERIE"].map(v => `<option value="${v}"${x.status === v ? " selected" : ""}>${v === "none" ? T("none") : T("st")[v]}</option>`).join("") + "</select>";
+  $("tb").innerHTML = r.rows.map((x, i) => {
+    const missing = r.missing.includes(x);
+    const cls = x.kind === "we" ? "we" : missing ? "miss" : x.holiday ? "hol" : "";
+    const hol = x.holiday ? `<span class="hol">${T("hol")[x.holiday]}</span>` : "";
+    let shiftTd = "", stTd = "";
+    if (x.kind === "work") { shiftTd = shiftSel(x); stTd = hol; }
+    else if (x.kind === "off" || x.kind === "incomplete") {
+      stTd = statusSel(x) + (hol ? " " + hol : "") + (x.kind === "incomplete" && x.status === "none" ? `<span class="inc">${T("incomplete")}</span>` : "");
+    } else stTd = hol;
+    return `<tr class="${cls}${flashDay === x.day ? " flash" : ""}" style="--i:${i}"><td>${x.day}</td><td class="wd">${wd(x.wd)}</td><td>${shiftTd}</td><td class="t">${x.s}</td><td class="t">${x.e}</td><td class="t ${x.ot.startsWith("-") ? "ot-neg" : x.ot && x.ot !== "00h00" && x.ot !== "?" ? "ot-pos" : ""}">${x.ot}</td><td>${stTd}</td></tr>`;
+  }).join("");
+  const tb = $("tb");
+  tb.classList.remove("anim");
+  if (animRows && !reduce) { void tb.offsetWidth; tb.classList.add("anim"); }
+  if (flashDay) { const sel = tb.querySelector(`select[data-day="${flashDay}"][data-k="${flashKey}"]`); sel && sel.classList.add("popped"); }
+  animRows = false; flashDay = null;
+}
+let flashKey = null;
+
+function fileBase() {
+  return `Timesheet_${last.y}_${String(last.m).padStart(2, "0")}_${($("name").value || "").replace(/\s+/g, "_")}`;
+}
+function saveBlob(data, type, ext) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([data], { type }));
+  a.download = fileBase() + "." + ext;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function buildPrint() {
+  const r = last.r, E = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const lbl = { CONGE: "CONGE", recup: "recup", MALADIE: "MALADIE", FERIE: "JOUR FERIE" };
+  const HF = { newyear: "Jour de l'An", eastermon: "Lundi de Pâques", labour: "Fête du Travail", europe: "Journée de l'Europe", ascension: "Ascension", whitmon: "Lundi de Pentecôte", national: "Fête nationale", assumption: "Assomption", allsaints: "Toussaint", xmas: "Noël", stephen: "Saint-Étienne" };
+  const rows = r.rows.map(x => {
+    const hol = x.holiday ? HF[x.holiday] : "";
+    let mid, note = hol;
+    if (x.kind === "we") mid = `<td class="v we"></td><td class="v we"></td><td class="v we"></td>`;
+    else if (x.status && x.status !== "none") mid = `<td colspan="3" class="${x.status}">${lbl[x.status]}</td>`;
+    else { mid = `<td class="v">${x.s}</td><td class="v">${x.e}</td><td class="v">${x.ot}</td>`; if (x.kind === "incomplete") note = T("incomplete"); }
+    return `<tr><td class="d">${x.day}</td><td class="w">${x.wd}</td>${mid}<td class="n">${E(note)}</td></tr>`;
+  }).join("");
+  $("print").innerHTML = `<div class="hd"><h2>Timesheet</h2><div class="meta"><b>NAME:</b> ${E($("name").value)}<br><b>Month:</b> ${String(last.m).padStart(2, "0")}/${last.y}</div></div>
+    <table><thead><tr><th>Day</th><th></th><th>Start time</th><th>End time</th><th>Overtime</th><th style="border:0;background:none"></th></tr></thead>
+    <tbody>${rows}<tr class="gap"><td colspan="6"></td></tr>
+    <tr class="tot"><td style="border:0;background:none" colspan="3"></td><td>Total</td><td>${hm(r.total)}</td><td class="n"></td></tr></tbody></table>`;
+}
+function download() {
+  const btn = $("dl"), lbl = btn.querySelector("span");
+  let msg = T("dlDone");
+  if (fmt === "ods") saveBlob(buildOds(TPL, last.r.xml), "application/vnd.oasis.opendocument.spreadsheet", "ods");
+  else if (fmt === "xlsx") saveBlob(buildXlsx(last.r, $("name").value, last.y, last.m, T("incomplete")), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx");
+  else {
+    buildPrint();
+    const old = document.title; document.title = fileBase();
+    addEventListener("afterprint", () => { document.title = old; }, { once: true });
+    setTimeout(() => window.print(), 50);
+    msg = T("pdfDone");
+  }
+  btn.classList.add("ok"); lbl.textContent = "✓ " + msg;
+  clearTimeout(btn._t); btn._t = setTimeout(() => { btn.classList.remove("ok"); lbl.textContent = T("download"); }, fmt === "pdf" ? 3500 : 1800);
+}
+
+const drop = $("drop");
+drop.onclick = () => $("file").click();
+$("file").onchange = e => e.target.files[0] && load(e.target.files[0]);
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("hover"); };
+drop.ondragleave = () => drop.classList.remove("hover");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("hover"); e.dataTransfer.files[0] && load(e.dataTransfer.files[0]); };
+["name", "hours"].forEach(id => $(id).addEventListener("input", render));
+$("month").addEventListener("input", () => { animRows = true; prevOpen = null; render(); });
+addEventListener("resize", moveThumb);
+document.fonts && document.fonts.ready.then(moveThumb);
+$("dl").onclick = download;
+$("change").onclick = () => $("file").click();
+document.querySelectorAll("#fmt button").forEach(b => b.onclick = () => setFmt(b.dataset.f));
+$("reset").onclick = () => { if (confirm(T("resetQ"))) { OV[$("month").value] = {}; saveOV(); render(); } };
+$("tb").addEventListener("change", e => {
+  const el = e.target; if (!el.dataset.day) return;
+  const ov = OV[$("month").value], d = +el.dataset.day;
+  ov[d] = ov[d] || {};
+  ov[d][el.dataset.k] = el.dataset.k === "shift" ? +el.value : el.value;
+  saveOV();
+  flashDay = d; flashKey = el.dataset.k;
+  render();
+});
+document.querySelectorAll("#lang button").forEach(b => b.onclick = () => {
+  lang = b.dataset.l;
+  try { localStorage.setItem("ts-lang", lang); } catch {}
+  applyLang();
+});
+applyLang();
+</script>
+</body>
+</html>
