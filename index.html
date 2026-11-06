@@ -101,7 +101,13 @@
   span.hol { color: #c26a00; font-size: 13px; margin-left: 8px; }
   span.inc { color: #c77c00; font-size: 13px; margin-left: 8px; }
 
-  footer { text-align: center; color: var(--faint); font-size: 12px; margin-top: 24px; }
+  footer { text-align: center; color: var(--faint); font-size: 12px; margin-top: 28px; }
+  footer .credits { margin-top: 10px; display: inline-flex; gap: 10px; align-items: center; font-size: 13px; }
+  footer a { color: var(--mute); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; padding: 6px 12px; border-radius: 980px; transition: background .2s, color .2s; }
+  footer a:hover { background: var(--fill); color: var(--ink); }
+  footer a b { color: var(--ink); font-weight: 600; }
+  footer a svg { width: 14px; height: 14px; }
+  footer .dot { color: var(--faint); }
   .fmt { display: inline-flex; background: var(--fill); border-radius: 980px; padding: 3px; position: relative; }
   .fmt button { position: relative; z-index: 1; background: transparent; border: 0; border-radius: 980px; padding: 8px 14px; font: 500 13px/1 var(--font); color: var(--ink); cursor: pointer; }
   .fmt .thumb { position: absolute; top: 3px; bottom: 3px; left: 0; border-radius: 980px; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 3px 1px rgba(0,0,0,.04); transition: transform .45s var(--spring), width .45s var(--spring); }
@@ -220,7 +226,14 @@
       <table><thead><tr><th data-t="day"></th><th></th><th data-t="shift"></th><th data-t="start"></th><th data-t="end"></th><th>Overtime</th><th data-t="status"></th></tr></thead><tbody id="tb"></tbody></table>
     </div>
   </div>
-  <footer data-t="foot"></footer>
+  <footer>
+    <div data-t="foot"></div>
+    <div class="credits">
+      <a href="https://github.com/G1NG4R" target="_blank" rel="noopener">by <b>timseil</b></a>
+      <span class="dot">·</span>
+      <a href="https://github.com/G1NG4R/timesheet" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span data-t="oss"></span></a>
+    </div>
+  </footer>
 </main>
 <div id="print"></div>
 
@@ -500,7 +513,7 @@ const TPL = {"mimetype": "application/vnd.oasis.opendocument.spreadsheet", "cont
 const I18N = {
   de: {
     title: "Timesheet-Generator",
-    pdfDone: "Druckdialog: „Als PDF speichern“ wählen", dlDone: "Heruntergeladen", change: "Andere Datei", how: "So wird gerechnet", loaded: "Monate im Export", foot: "Läuft komplett lokal im Browser – keine Daten verlassen diesen PC.",
+    oss: "Open Source auf GitHub", pdfDone: "Druckdialog: „Als PDF speichern“ wählen", dlDone: "Heruntergeladen", change: "Andere Datei", how: "So wird gerechnet", loaded: "Monate im Export", foot: "Läuft komplett lokal im Browser – keine Daten verlassen diesen PC.",
     r1: "Die Schicht (08:00, 09:00 oder 10:00) wird aus dem Eintritt erkannt und kann pro Tag geändert werden.",
     r2: "Zeit vor Schichtbeginn zählt nicht als Overtime.",
     r3: "Overtime zählt erst nach Schichtende (17/18/19 Uhr) und nur in vollen 15 Minuten.",
@@ -523,7 +536,7 @@ const I18N = {
   },
   fr: {
     title: "Générateur de timesheet",
-    pdfDone: "Dans l’impression : « Enregistrer au format PDF »", dlDone: "Téléchargé", change: "Autre fichier", how: "Méthode de calcul", loaded: "mois dans l’export", foot: "Fonctionne entièrement en local – aucune donnée ne quitte ce PC.",
+    oss: "Open source sur GitHub", pdfDone: "Dans l’impression : « Enregistrer au format PDF »", dlDone: "Téléchargé", change: "Autre fichier", how: "Méthode de calcul", loaded: "mois dans l’export", foot: "Fonctionne entièrement en local – aucune donnée ne quitte ce PC.",
     r1: "L’horaire (08h00, 09h00 ou 10h00) est détecté à l’entrée et peut être modifié par jour.",
     r2: "Le temps avant le début de l’horaire ne compte pas en heures sup.",
     r3: "Les heures sup. comptent seulement après la fin de l’horaire (17h/18h/19h), par tranches complètes de 15 minutes.",
@@ -546,7 +559,7 @@ const I18N = {
   },
   en: {
     title: "Timesheet generator",
-    pdfDone: "In the print dialog: “Save as PDF”", dlDone: "Downloaded", change: "Other file", how: "How it is calculated", loaded: "months in export", foot: "Runs entirely in your browser – no data leaves this PC.",
+    oss: "Open source on GitHub", pdfDone: "In the print dialog: “Save as PDF”", dlDone: "Downloaded", change: "Other file", how: "How it is calculated", loaded: "months in export", foot: "Runs entirely in your browser – no data leaves this PC.",
     r1: "The shift (08:00, 09:00 or 10:00) is detected from badge-in and can be changed per day.",
     r2: "Time before shift start does not count as overtime.",
     r3: "Overtime only counts after shift end (5/6/7 pm) and only in full 15-minute blocks.",
